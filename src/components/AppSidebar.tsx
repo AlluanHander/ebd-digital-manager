@@ -28,10 +28,11 @@ import {
 } from '@/components/ui/sidebar';
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const { user } = useAuth();
   const currentPath = location.pathname;
+  const collapsed = state === 'collapsed';
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -56,7 +57,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       className={`${collapsed ? "w-16" : "w-64"} border-r bg-white shadow-lg transition-all duration-300`}
-      collapsible
+      collapsible="icon"
     >
       <SidebarTrigger className="m-4 self-end lg:hidden" />
 
