@@ -19,6 +19,7 @@ import { Inventory } from "@/pages/Inventory";
 import { Reports } from "@/pages/Reports";
 import { Users } from "@/pages/Users";
 import { Calendar } from "@/pages/Calendar";
+import { Settings } from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -100,7 +101,7 @@ const AppRoutes = () => {
       <Route path="/reports" element={
         <ProtectedRoute>
           <Layout>
-            <Visitors />
+            <Reports />
           </Layout>
         </ProtectedRoute>
       } />
@@ -124,10 +125,7 @@ const AppRoutes = () => {
       <Route path="/admin" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Configurações</h1>
-              <p className="text-gray-600">Área administrativa do sistema EBD Digital.</p>
-            </div>
+            <Settings />
           </Layout>
         </ProtectedRoute>
       } />

@@ -58,6 +58,7 @@ export function AppSidebar() {
     { title: "Presença Geral", url: "/attendance", icon: UserCheck },
     { title: "Aniversários", url: "/birthdays", icon: Cake },
     { title: "Visitantes", url: "/visitors", icon: UserPlus },
+    { title: "Inventário", url: "/inventory", icon: Package },
     { title: "Relatórios", url: "/reports", icon: BarChart3 },
     { title: "Cadastros", url: "/users", icon: Users },
     { title: "Calendário", url: "/calendar", icon: Calendar },
