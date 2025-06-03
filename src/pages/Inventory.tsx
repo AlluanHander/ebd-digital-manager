@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClasses, saveClass, getCurrentQuarter } from '@/lib/storage';
-import { Class, Inventory } from '@/types';
+import { Class, Inventory as InventoryType } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,7 +59,7 @@ export const Inventory = () => {
     if (!selectedClass) return;
 
     const currentQuarter = getCurrentQuarter();
-    const inventory: Inventory = {
+    const inventory: InventoryType = {
       id: selectedClass.inventory?.id || Date.now().toString(),
       classId: selectedClass.id,
       bibles: inventoryData.bibles,
