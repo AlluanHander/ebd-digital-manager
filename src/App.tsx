@@ -64,7 +64,9 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <Layout>
             <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Controle de Presença</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                {JSON.parse(localStorage.getItem('ebd_current_user') || '{}')?.type === 'professor' ? 'Presença' : 'Presença Geral'}
+              </h1>
               <p className="text-gray-600">Em desenvolvimento...</p>
             </div>
           </Layout>
@@ -120,6 +122,28 @@ const AppRoutes = () => {
           <Layout>
             <div className="text-center py-20">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">Relatórios</h1>
+              <p className="text-gray-600">Em desenvolvimento...</p>
+            </div>
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/users" element={
+        <ProtectedRoute>
+          <Layout>
+            <div className="text-center py-20">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">Cadastros</h1>
+              <p className="text-gray-600">Em desenvolvimento...</p>
+            </div>
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/calendar" element={
+        <ProtectedRoute>
+          <Layout>
+            <div className="text-center py-20">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">Calendário</h1>
               <p className="text-gray-600">Em desenvolvimento...</p>
             </div>
           </Layout>

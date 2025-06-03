@@ -9,7 +9,9 @@ import {
   UserPlus, 
   Package, 
   BarChart3,
-  Settings
+  Settings,
+  FileText,
+  Cake
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,21 +40,30 @@ export function AppSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-blue-100 text-blue-700 font-medium border-r-2 border-blue-600" : "hover:bg-gray-100 text-gray-700";
 
-  const menuItems = [
+  // Menu items for professors - simplified
+  const professorMenuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
-    { title: "Classes", url: "/classes", icon: Users },
     { title: "Presença", url: "/attendance", icon: UserCheck },
     { title: "Avisos", url: "/announcements", icon: MessageSquare },
-    { title: "Aniversários", url: "/birthdays", icon: Calendar },
+    { title: "Aniversários", url: "/birthdays", icon: Cake },
     { title: "Visitantes", url: "/visitors", icon: UserPlus },
     { title: "Inventário", url: "/inventory", icon: Package },
-    { title: "Relatórios", url: "/reports", icon: BarChart3 },
+    { title: "Calendário", url: "/calendar", icon: Calendar },
   ];
 
-  // Filter menu items based on user type
-  const filteredItems = user?.type === 'professor' 
-    ? menuItems.filter(item => !['Classes'].includes(item.title))
-    : menuItems;
+  // Menu items for secretaries - full control
+  const secretaryMenuItems = [
+    { title: "Dashboard", url: "/dashboard", icon: Home },
+    { title: "Avisos", url: "/announcements", icon: MessageSquare },
+    { title: "Presença Geral", url: "/attendance", icon: UserCheck },
+    { title: "Aniversários", url: "/birthdays", icon: Cake },
+    { title: "Visitantes", url: "/visitors", icon: UserPlus },
+    { title: "Relatórios", url: "/reports", icon: BarChart3 },
+    { title: "Cadastros", url: "/users", icon: Users },
+    { title: "Calendário", url: "/calendar", icon: Calendar },
+  ];
+
+  const menuItems = user?.type === 'professor' ? professorMenuItems : secretaryMenuItems;
 
   return (
     <Sidebar
@@ -64,12 +75,12 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         <SidebarGroup>
           <SidebarGroupLabel className={`${collapsed ? "sr-only" : ""} text-gray-500 uppercase tracking-wide text-xs font-semibold mb-4`}>
-            Menu Principal
+            {user?.type === 'professor' ? 'Menu Professor' : 'Menu Secretário'}
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {filteredItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="hover:bg-gray-50 rounded-lg transition-colors">
                     <NavLink to={item.url} end className={getNavCls}>
