@@ -11,6 +11,14 @@ import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
+import { Attendance } from "@/pages/Attendance";
+import { Announcements } from "@/pages/Announcements";
+import { Birthdays } from "@/pages/Birthdays";
+import { Visitors } from "@/pages/Visitors";
+import { Inventory } from "@/pages/Inventory";
+import { Reports } from "@/pages/Reports";
+import { Users } from "@/pages/Users";
+import { Calendar } from "@/pages/Calendar";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,26 +57,10 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      <Route path="/classes" element={
-        <ProtectedRoute>
-          <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Gerenciamento de Classes</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
       <Route path="/attendance" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                {JSON.parse(localStorage.getItem('ebd_current_user') || '{}')?.type === 'professor' ? 'Presença' : 'Presença Geral'}
-              </h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Attendance />
           </Layout>
         </ProtectedRoute>
       } />
@@ -76,10 +68,7 @@ const AppRoutes = () => {
       <Route path="/announcements" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Avisos</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Announcements />
           </Layout>
         </ProtectedRoute>
       } />
@@ -87,10 +76,7 @@ const AppRoutes = () => {
       <Route path="/birthdays" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Aniversários</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Birthdays />
           </Layout>
         </ProtectedRoute>
       } />
@@ -98,10 +84,7 @@ const AppRoutes = () => {
       <Route path="/visitors" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Visitantes</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Visitors />
           </Layout>
         </ProtectedRoute>
       } />
@@ -109,10 +92,7 @@ const AppRoutes = () => {
       <Route path="/inventory" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Inventário</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Inventory />
           </Layout>
         </ProtectedRoute>
       } />
@@ -120,10 +100,7 @@ const AppRoutes = () => {
       <Route path="/reports" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Relatórios</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Visitors />
           </Layout>
         </ProtectedRoute>
       } />
@@ -131,10 +108,7 @@ const AppRoutes = () => {
       <Route path="/users" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Cadastros</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Users />
           </Layout>
         </ProtectedRoute>
       } />
@@ -142,10 +116,7 @@ const AppRoutes = () => {
       <Route path="/calendar" element={
         <ProtectedRoute>
           <Layout>
-            <div className="text-center py-20">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Calendário</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
-            </div>
+            <Calendar />
           </Layout>
         </ProtectedRoute>
       } />
@@ -155,7 +126,7 @@ const AppRoutes = () => {
           <Layout>
             <div className="text-center py-20">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">Configurações</h1>
-              <p className="text-gray-600">Em desenvolvimento...</p>
+              <p className="text-gray-600">Área administrativa do sistema EBD Digital.</p>
             </div>
           </Layout>
         </ProtectedRoute>
