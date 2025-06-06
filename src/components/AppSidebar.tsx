@@ -69,14 +69,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className={`${collapsed ? "w-16" : "w-64"} border-r bg-white shadow-lg transition-all duration-300`}
+      className={`${collapsed ? "w-12 sm:w-16" : "w-48 sm:w-64"} border-r bg-white shadow-lg transition-all duration-300`}
       collapsible="icon"
     >
-      <SidebarTrigger className="m-4 self-end lg:hidden" />
+      <SidebarTrigger className="m-2 sm:m-4 self-end lg:hidden" />
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-1 sm:px-2">
         <SidebarGroup>
-          <SidebarGroupLabel className={`${collapsed ? "sr-only" : ""} text-gray-500 uppercase tracking-wide text-xs font-semibold mb-4`}>
+          <SidebarGroupLabel className={`${collapsed ? "sr-only" : ""} text-gray-500 uppercase tracking-wide text-xs font-semibold mb-2 sm:mb-4 px-2`}>
             {user?.type === 'professor' ? 'Menu Professor' : 'Menu Secretário'}
           </SidebarGroupLabel>
 
@@ -84,10 +84,10 @@ export function AppSidebar() {
             <SidebarMenu className="space-y-1">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="hover:bg-gray-50 rounded-lg transition-colors">
+                  <SidebarMenuButton asChild className="hover:bg-gray-50 rounded-lg transition-colors px-2 sm:px-3 py-2">
                     <NavLink to={item.url} end className={getNavCls}>
-                      <item.icon className={`${collapsed ? "mx-auto" : "mr-3"} h-5 w-5 flex-shrink-0`} />
-                      {!collapsed && <span className="font-medium">{item.title}</span>}
+                      <item.icon className={`${collapsed ? "mx-auto" : "mr-2 sm:mr-3"} h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0`} />
+                      {!collapsed && <span className="font-medium text-sm sm:text-base truncate">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -97,17 +97,17 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {user?.type === 'secretario' && (
-          <SidebarGroup className="mt-8">
-            <SidebarGroupLabel className={`${collapsed ? "sr-only" : ""} text-gray-500 uppercase tracking-wide text-xs font-semibold mb-4`}>
+          <SidebarGroup className="mt-4 sm:mt-8">
+            <SidebarGroupLabel className={`${collapsed ? "sr-only" : ""} text-gray-500 uppercase tracking-wide text-xs font-semibold mb-2 sm:mb-4 px-2`}>
               Administração
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild className="hover:bg-gray-50 rounded-lg transition-colors">
+                  <SidebarMenuButton asChild className="hover:bg-gray-50 rounded-lg transition-colors px-2 sm:px-3 py-2">
                     <NavLink to="/admin" className={getNavCls}>
-                      <Settings className={`${collapsed ? "mx-auto" : "mr-3"} h-5 w-5 flex-shrink-0`} />
-                      {!collapsed && <span className="font-medium">Configurações</span>}
+                      <Settings className={`${collapsed ? "mx-auto" : "mr-2 sm:mr-3"} h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0`} />
+                      {!collapsed && <span className="font-medium text-sm sm:text-base truncate">Configurações</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
