@@ -10,10 +10,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { getUsers, getChurchName, setChurchName, getSavedCredentials, setSavedCredentials, clearSavedCredentials } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Church, Mail, Lock, UserCheck } from 'lucide-react';
+import { Church, User, Lock, UserCheck } from 'lucide-react';
 
 export const Login = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [userType, setUserType] = useState<'professor' | 'secretario'>('professor');
   const [churchName, setChurchNameState] = useState('');
@@ -32,7 +32,7 @@ export const Login = () => {
 
     const savedCreds = getSavedCredentials();
     if (savedCreds) {
-      setEmail(savedCreds.email);
+      setUsername(savedCreds.email); // Mantemos a compatibilidade com dados salvos
       setPassword(savedCreds.password);
       setSaveCredentialsState(true);
     }
@@ -48,10 +48,10 @@ export const Login = () => {
         setChurchName(churchName.trim());
       }
 
-      // Find user
+      // Find user by username or email (for compatibility)
       const users = getUsers();
       const user = users.find(u => 
-        u.email === email && 
+        (u.email === username || u.name === username) && 
         u.type === userType
       );
 
@@ -64,9 +64,9 @@ export const Login = () => {
         return;
       }
 
-      // Save credentials if requested
+      // Save credentials if requested (using email field for compatibility)
       if (saveCredentials) {
-        setSavedCredentials(email, password);
+        setSavedCredentials(username, password);
       } else {
         clearSavedCredentials();
       }
@@ -152,19 +152,19 @@ export const Login = () => {
                 </RadioGroup>
               </div>
 
-              {/* Email */}
+              {/* Username */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email
+                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                  Nome do usuário
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="Digite seu email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    type="text"
+                    placeholder="Digite seu nome de usuário"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />

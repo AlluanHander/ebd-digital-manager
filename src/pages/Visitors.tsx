@@ -1,359 +1,413 @@
-
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { getClasses, saveClass, generateId } from '@/lib/storage';
-import { Class, Visitor } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { UserPlus, Trash2, Users, Calendar } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast";
+import { Plus, UserPlus, Edit, Trash2 } from 'lucide-react';
+
+interface Visitor {
+  id: string;
+  name: string;
+  age: number;
+  phone: string;
+  visitDate: string;
+  interest: 'alto' | 'medio' | 'baixo';
+  observations?: string;
+}
 
 export const Visitors = () => {
-  const { user } = useAuth();
+  const [visitors, setVisitors] = useState<Visitor[]>([]);
+  const [newVisitor, setNewVisitor] = useState<Omit<Visitor, 'id'>>({
+    name: '',
+    age: 18,
+    phone: '',
+    visitDate: new Date().toISOString().split('T')[0],
+    interest: 'medio',
+    observations: '',
+  });
+  const [editingVisitor, setEditingVisitor] = useState<Visitor | null>(null);
   const { toast } = useToast();
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [newVisitorName, setNewVisitorName] = useState('');
-  const [todayDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    const allClasses = getClasses();
-    if (user?.type === 'professor') {
-      const userClasses = allClasses.filter(c => 
-        c.teacherIds.includes(user.id) || user.classIds?.includes(c.id)
-      );
-      setClasses(userClasses);
-      if (userClasses.length > 0 && !selectedClass) {
-        setSelectedClass(userClasses[0]);
-      }
-    } else {
-      setClasses(allClasses);
+    // Load visitors from local storage on component mount
+    const storedVisitors = localStorage.getItem('visitors');
+    if (storedVisitors) {
+      setVisitors(JSON.parse(storedVisitors));
     }
-  }, [user]);
+  }, []);
 
-  const addVisitor = () => {
-    if (!newVisitorName.trim() || !selectedClass) return;
+  useEffect(() => {
+    // Save visitors to local storage whenever the visitors state changes
+    localStorage.setItem('visitors', JSON.stringify(visitors));
+  }, [visitors]);
 
-    const visitor: Visitor = {
-      id: generateId(),
-      name: newVisitorName.trim(),
-      classId: selectedClass.id,
-      visitDate: todayDate,
-      createdAt: new Date().toISOString()
-    };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNewVisitor(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-    const updatedClass = {
-      ...selectedClass,
-      visitors: [...selectedClass.visitors, visitor]
-    };
+  const handleAddVisitor = () => {
+    if (!newVisitor.name || !newVisitor.phone) {
+      toast({
+        title: "Erro ao adicionar visitante",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    setNewVisitorName('');
-    
+    const newId = Math.random().toString(36).substring(2, 15);
+    const visitorToAdd: Visitor = { ...newVisitor, id: newId };
+    setVisitors(prev => [...prev, visitorToAdd]);
+    setNewVisitor({
+      name: '',
+      age: 18,
+      phone: '',
+      visitDate: new Date().toISOString().split('T')[0],
+      interest: 'medio',
+      observations: '',
+    });
+
     toast({
-      title: "Visitante cadastrado",
-      description: `${visitor.name} foi registrado como visitante.`
+      title: "Visitante adicionado",
+      description: `Visitante ${newVisitor.name} adicionado com sucesso!`,
     });
   };
 
-  const removeVisitor = (visitorId: string) => {
-    if (!selectedClass) return;
-
-    const updatedClass = {
-      ...selectedClass,
-      visitors: selectedClass.visitors.filter(v => v.id !== visitorId)
-    };
-
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    
+  const handleDeleteVisitor = (id: string) => {
+    setVisitors(prev => prev.filter(visitor => visitor.id !== id));
     toast({
       title: "Visitante removido",
-      description: "Visitante foi removido da lista."
+      description: "Visitante removido com sucesso!",
     });
   };
 
-  const getTodayVisitors = () => {
-    if (!selectedClass) return [];
-    return selectedClass.visitors.filter(v => v.visitDate === todayDate);
+  const handleEditVisitor = (visitor: Visitor) => {
+    setEditingVisitor({ ...visitor });
   };
 
-  const getAllVisitors = () => {
-    if (user?.type === 'secretario') {
-      const allVisitors: (Visitor & { className: string })[] = [];
-      classes.forEach(classData => {
-        classData.visitors.forEach(visitor => {
-          allVisitors.push({ ...visitor, className: classData.name });
-        });
-      });
-      return allVisitors.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
-    }
-    return selectedClass?.visitors.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()) || [];
-  };
+  const handleSaveEdit = () => {
+    if (!editingVisitor) return;
 
-  const getClassName = (classId: string) => {
-    const classData = classes.find(c => c.id === classId);
-    return classData?.name || 'Classe não encontrada';
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
-
-  if (user?.type === 'secretario') {
-    const todayVisitorsAll = classes.reduce((total, classData) => {
-      return total + classData.visitors.filter(v => v.visitDate === todayDate).length;
-    }, 0);
-
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Visitantes</h1>
-          <p className="text-gray-600">Visão geral de todos os visitantes</p>
-        </div>
-
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-blue-50 border-blue-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-blue-700">
-                <UserPlus className="w-5 h-5" />
-                Visitantes Hoje
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-800">{todayVisitorsAll}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-green-50 border-green-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-green-700">
-                <Users className="w-5 h-5" />
-                Total de Visitantes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-800">
-                {classes.reduce((total, c) => total + c.visitors.length, 0)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-purple-50 border-purple-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-purple-700">
-                <Calendar className="w-5 h-5" />
-                Classes Ativas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-800">{classes.length}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Lista de Visitantes por Classe */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classes.map((classData) => {
-            const classVisitors = classData.visitors;
-            const todayClassVisitors = classVisitors.filter(v => v.visitDate === todayDate);
-            
-            return (
-              <Card key={classData.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    {classData.name}
-                  </CardTitle>
-                  <CardDescription>
-                    Professores: {classData.teacherNames.join(', ')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total de Visitantes:</span>
-                    <Badge variant="outline">{classVisitors.length}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Visitantes Hoje:</span>
-                    <Badge variant="default">{todayClassVisitors.length}</Badge>
-                  </div>
-                  
-                  {todayClassVisitors.length > 0 && (
-                    <div className="mt-3 p-2 bg-gray-50 rounded">
-                      <p className="text-xs text-gray-600 mb-1">Visitantes de hoje:</p>
-                      {todayClassVisitors.map(visitor => (
-                        <p key={visitor.id} className="text-sm font-medium">{visitor.name}</p>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Lista Completa de Visitantes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Histórico Completo de Visitantes</CardTitle>
-            <CardDescription>Todos os visitantes registrados</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {getAllVisitors().length > 0 ? (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {getAllVisitors().map((visitor) => (
-                  <div key={visitor.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <UserPlus className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{visitor.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {'className' in visitor ? visitor.className : getClassName(visitor.classId)} • {formatDate(visitor.visitDate)}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={visitor.visitDate === todayDate ? "default" : "outline"}>
-                      {visitor.visitDate === todayDate ? "Hoje" : formatDate(visitor.visitDate)}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <UserPlus className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum visitante registrado</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+    setVisitors(prev =>
+      prev.map(visitor =>
+        visitor.id === editingVisitor.id ? editingVisitor : visitor
+      )
     );
-  }
+    setEditingVisitor(null);
+    toast({
+      title: "Visitante atualizado",
+      description: "Visitante atualizado com sucesso!",
+    });
+  };
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Visitantes</h1>
-        <p className="text-gray-600">Cadastre os visitantes da sua classe</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <CardTitle className="text-2xl font-bold">
+          <UserPlus className="w-6 h-6 mr-2 inline-block" />
+          Visitantes
+        </CardTitle>
+        <CardDescription>
+          Gerencie os visitantes da sua igreja de forma fácil e eficiente.
+        </CardDescription>
       </div>
 
-      {selectedClass ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Informações e Cadastro */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5" />
-                Cadastrar Visitante
-              </CardTitle>
-              <CardDescription>
-                Classe: {selectedClass.name}<br />
-                Data: {new Date(todayDate).toLocaleDateString('pt-BR')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                <span className="text-sm font-medium">Visitantes Hoje:</span>
-                <Badge variant="default">{getTodayVisitors().length}</Badge>
-              </div>
-              
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium">Total de Visitantes:</span>
-                <Badge variant="outline">{selectedClass.visitors.length}</Badge>
-              </div>
-              
-              <div className="space-y-3 pt-4 border-t">
-                <Label htmlFor="visitor-name" className="text-sm font-medium">
-                  Nome do Visitante
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="visitor-name"
-                    placeholder="Digite o nome do visitante"
-                    value={newVisitorName}
-                    onChange={(e) => setNewVisitorName(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addVisitor()}
-                  />
-                  <Button onClick={addVisitor} size="icon">
-                    <UserPlus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Add Visitor Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Adicionar Visitante
+          </CardTitle>
+          <CardDescription>
+            Adicione um novo visitante ao sistema.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                name="name"
+                value={newVisitor.name}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="age">Idade</Label>
+              <Input
+                id="age"
+                type="number"
+                name="age"
+                value={newVisitor.age.toString()}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+          </div>
 
-          {/* Lista de Visitantes */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Lista de Visitantes
-              </CardTitle>
-              <CardDescription>
-                Histórico de visitantes da classe {selectedClass.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {selectedClass.visitors.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {getAllVisitors().map((visitor) => (
-                    <div key={visitor.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <UserPlus className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{visitor.name}</p>
-                          <p className="text-sm text-gray-500">
-                            Visitou em {formatDate(visitor.visitDate)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={visitor.visitDate === todayDate ? "default" : "outline"}>
-                          {visitor.visitDate === todayDate ? "Hoje" : formatDate(visitor.visitDate)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                name="phone"
+                value={newVisitor.phone}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="visitDate">Data da Visita</Label>
+              <Input
+                id="visitDate"
+                type="date"
+                name="visitDate"
+                value={newVisitor.visitDate}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="interest">Nível de Interesse</Label>
+              <Select
+                name="interest"
+                value={newVisitor.interest}
+                onValueChange={(value: 'alto' | 'medio' | 'baixo') =>
+                  setNewVisitor(prev => ({ ...prev, interest: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alto">Alto</SelectItem>
+                  <SelectItem value="medio">Médio</SelectItem>
+                  <SelectItem value="baixo">Baixo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="observations">Observações</Label>
+              <Textarea
+                id="observations"
+                name="observations"
+                placeholder="Observações sobre o visitante..."
+                value={newVisitor.observations}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
+
+          <Button onClick={handleAddVisitor}>Adicionar Visitante</Button>
+        </CardContent>
+      </Card>
+
+      {/* Visitors List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5" />
+            Lista de Visitantes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {visitors.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <UserPlus className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhum visitante cadastrado ainda.</p>
+              <p className="text-sm">Use o formulário acima para adicionar visitantes.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Idade</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Data da Visita</TableHead>
+                    <TableHead>Interesse</TableHead>
+                    <TableHead>Observações</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visitors.map((visitor) => (
+                    <TableRow key={visitor.id}>
+                      <TableCell className="font-medium">{visitor.name}</TableCell>
+                      <TableCell>{visitor.age} anos</TableCell>
+                      <TableCell>{visitor.phone}</TableCell>
+                      <TableCell>{visitor.visitDate}</TableCell>
+                      <TableCell>
+                        <Badge variant={visitor.interest === 'alto' ? 'default' : visitor.interest === 'medio' ? 'secondary' : 'outline'}>
+                          {visitor.interest === 'alto' ? 'Alto' : visitor.interest === 'medio' ? 'Médio' : 'Baixo'}
                         </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeVisitor(visitor.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={visitor.observations || ''}>
+                        {visitor.observations || 'Nenhuma observação'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditVisitor(visitor)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteVisitor(visitor.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <UserPlus className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum visitante registrado</p>
-                  <p className="text-sm text-gray-400">Cadastre o primeiro visitante da sua classe</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="text-center py-8">
-            <UserPlus className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhuma classe atribuída</p>
-            <p className="text-sm text-gray-400">Entre em contato com o secretário para ser atribuído a uma classe</p>
-          </CardContent>
-        </Card>
-      )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Visitor Dialog */}
+      <Dialog open={editingVisitor !== null} onOpenChange={(open) => !open && setEditingVisitor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Visitante</DialogTitle>
+          </DialogHeader>
+          {editingVisitor && (
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome</Label>
+                <Input
+                  id="edit-name"
+                  value={editingVisitor.name}
+                  onChange={(e) => setEditingVisitor({...editingVisitor, name: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-age">Idade</Label>
+                <Input
+                  id="edit-age"
+                  type="number"
+                  value={editingVisitor.age.toString()}
+                  onChange={(e) => setEditingVisitor({...editingVisitor, age: parseInt(e.target.value) || 0})}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Telefone</Label>
+                <Input
+                  id="edit-phone"
+                  value={editingVisitor.phone}
+                  onChange={(e) => setEditingVisitor({...editingVisitor, phone: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-visitDate">Data da Visita</Label>
+                <Input
+                  id="edit-visitDate"
+                  type="date"
+                  value={editingVisitor.visitDate}
+                  onChange={(e) => setEditingVisitor({...editingVisitor, visitDate: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-interest">Nível de Interesse</Label>
+                <Select
+                  value={editingVisitor.interest}
+                  onValueChange={(value: 'alto' | 'medio' | 'baixo') => 
+                    setEditingVisitor({...editingVisitor, interest: value})
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alto">Alto</SelectItem>
+                    <SelectItem value="medio">Médio</SelectItem>
+                    <SelectItem value="baixo">Baixo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-observations">Observações</Label>
+                <Textarea
+                  id="edit-observations"
+                  value={editingVisitor.observations || ''}
+                  onChange={(e) => setEditingVisitor({...editingVisitor, observations: e.target.value})}
+                  placeholder="Observações sobre o visitante..."
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingVisitor(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
