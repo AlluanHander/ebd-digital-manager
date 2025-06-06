@@ -39,6 +39,14 @@ export interface Visitor {
   createdAt: string;
 }
 
+export interface AnnouncementReply {
+  id: string;
+  content: string;
+  authorName: string;
+  authorType: 'professor' | 'secretario';
+  createdAt: string;
+}
+
 export interface Announcement {
   id: string;
   title: string;
@@ -46,6 +54,9 @@ export interface Announcement {
   classId: string;
   createdBy: string;
   createdAt: string;
+  authorName?: string;
+  authorType?: 'professor' | 'secretario';
+  replies?: AnnouncementReply[];
 }
 
 export interface Birthday {

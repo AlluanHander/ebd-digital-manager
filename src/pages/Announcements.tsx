@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClasses, saveClass, generateId } from '@/lib/storage';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Plus, Trash2, Send, Edit } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Send, Reply, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -19,6 +20,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Announcements = () => {
   const { user } = useAuth();
@@ -31,21 +39,29 @@ export const Announcements = () => {
     classId: 'all'
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
 
   useEffect(() => {
     const allClasses = getClasses();
     setClasses(allClasses);
     
-    // Compilar todos os avisos
+    // Filtrar classes baseado no tipo de usuário
+    let filteredClasses = allClasses;
+    if (user?.type === 'professor' && user.classIds) {
+      filteredClasses = allClasses.filter(classData => user.classIds?.includes(classData.id));
+    }
+    
+    // Compilar todos os avisos das classes filtradas
     const allAnnouncements: Announcement[] = [];
-    allClasses.forEach(classData => {
+    filteredClasses.forEach(classData => {
       allAnnouncements.push(...classData.announcements);
     });
     
     // Ordenar por data (mais recente primeiro)
     allAnnouncements.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setAnnouncements(allAnnouncements);
-  }, []);
+  }, [user]);
 
   const createAnnouncement = () => {
     if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim() || !user) return;
@@ -56,30 +72,50 @@ export const Announcements = () => {
       content: newAnnouncement.content.trim(),
       classId: newAnnouncement.classId,
       createdBy: user.id,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      authorName: user.name,
+      authorType: user.type,
+      replies: []
     };
 
-    if (newAnnouncement.classId === 'all') {
-      // Adicionar para todas as classes
-      const updatedClasses = classes.map(classData => ({
-        ...classData,
-        announcements: [...classData.announcements, announcement]
-      }));
-      
-      updatedClasses.forEach(saveClass);
-      setClasses(updatedClasses);
-    } else {
-      // Adicionar para uma classe específica
-      const targetClass = classes.find(c => c.id === newAnnouncement.classId);
-      if (targetClass) {
-        const updatedClass = {
-          ...targetClass,
-          announcements: [...targetClass.announcements, announcement]
-        };
+    if (user.type === 'secretario') {
+      if (newAnnouncement.classId === 'all') {
+        // Secretário enviando para todas as classes
+        const updatedClasses = classes.map(classData => ({
+          ...classData,
+          announcements: [...classData.announcements, announcement]
+        }));
         
-        saveClass(updatedClass);
-        setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+        updatedClasses.forEach(saveClass);
+        setClasses(updatedClasses);
+      } else {
+        // Secretário enviando para uma classe específica
+        const targetClass = classes.find(c => c.id === newAnnouncement.classId);
+        if (targetClass) {
+          const updatedClass = {
+            ...targetClass,
+            announcements: [...targetClass.announcements, announcement]
+          };
+          
+          saveClass(updatedClass);
+          setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+        }
       }
+    } else {
+      // Professor enviando para suas classes
+      const userClasses = classes.filter(c => user.classIds?.includes(c.id));
+      userClasses.forEach(classData => {
+        const updatedClass = {
+          ...classData,
+          announcements: [...classData.announcements, { ...announcement, classId: classData.id }]
+        };
+        saveClass(updatedClass);
+      });
+      
+      setClasses(classes.map(c => {
+        const updatedClass = userClasses.find(uc => uc.id === c.id);
+        return updatedClass || c;
+      }));
     }
 
     setAnnouncements(prev => [announcement, ...prev]);
@@ -87,8 +123,56 @@ export const Announcements = () => {
     setIsCreating(false);
     
     toast({
-      title: "Aviso criado",
+      title: "Aviso enviado",
       description: "O aviso foi enviado com sucesso."
+    });
+  };
+
+  const replyToAnnouncement = (announcementId: string) => {
+    if (!replyContent.trim() || !user) return;
+
+    const reply = {
+      id: generateId(),
+      content: replyContent.trim(),
+      authorName: user.name,
+      authorType: user.type,
+      createdAt: new Date().toISOString()
+    };
+
+    // Encontrar e atualizar o aviso nas classes
+    const updatedClasses = classes.map(classData => ({
+      ...classData,
+      announcements: classData.announcements.map(announcement => {
+        if (announcement.id === announcementId) {
+          return {
+            ...announcement,
+            replies: [...(announcement.replies || []), reply]
+          };
+        }
+        return announcement;
+      })
+    }));
+
+    updatedClasses.forEach(saveClass);
+    setClasses(updatedClasses);
+    
+    // Atualizar estado local
+    setAnnouncements(prev => prev.map(announcement => {
+      if (announcement.id === announcementId) {
+        return {
+          ...announcement,
+          replies: [...(announcement.replies || []), reply]
+        };
+      }
+      return announcement;
+    }));
+
+    setReplyContent('');
+    setReplyingTo(null);
+    
+    toast({
+      title: "Resposta enviada",
+      description: "Sua resposta foi enviada com sucesso."
     });
   };
 
@@ -114,132 +198,20 @@ export const Announcements = () => {
     return classData?.name || 'Classe não encontrada';
   };
 
-  const getUserName = (userId: string) => {
-    // Em um app real, você buscaria o nome do usuário
-    return 'Secretário';
-  };
-
-  if (user?.type === 'professor') {
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Avisos</h1>
-          <p className="text-gray-600">Leia os avisos transmitidos pela secretaria</p>
-        </div>
-
-        {/* Add Quick Announcement Button for Professors */}
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Criar Aviso Rápido
-              </CardTitle>
-              <Dialog open={isCreating} onOpenChange={setIsCreating}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo Aviso
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Criar Aviso para a Classe</DialogTitle>
-                    <DialogDescription>
-                      Crie um aviso para sua classe
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Título do Aviso</Label>
-                      <Input
-                        id="title"
-                        placeholder="Digite o título do aviso"
-                        value={newAnnouncement.title}
-                        onChange={(e) => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="content">Conteúdo</Label>
-                      <Textarea
-                        id="content"
-                        placeholder="Digite o conteúdo do aviso"
-                        value={newAnnouncement.content}
-                        onChange={(e) => setNewAnnouncement(prev => ({ ...prev, content: e.target.value }))}
-                        rows={4}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsCreating(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={createAnnouncement}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Enviar Aviso
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {announcements.length > 0 ? (
-          <div className="space-y-4">
-            {announcements.map((announcement) => (
-              <Card key={announcement.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{announcement.title}</CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
-                        <span>Por: {getUserName(announcement.createdBy)}</span>
-                        <Badge variant="outline">{getClassName(announcement.classId)}</Badge>
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">
-                        {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
-                      {announcement.createdBy === user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteAnnouncement(announcement.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="text-center py-8">
-              <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Nenhum aviso disponível</p>
-              <p className="text-sm text-gray-400">Aguarde os avisos da secretaria ou crie um aviso para sua classe</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    );
-  }
+  const availableClasses = user?.type === 'professor' 
+    ? classes.filter(c => user.classIds?.includes(c.id))
+    : classes;
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Avisos</h1>
-        <p className="text-gray-600">Crie e gerencie avisos para as classes</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Central de Avisos</h1>
+        <p className="text-gray-600">
+          {user?.type === 'professor' 
+            ? 'Veja avisos da secretaria e comunique-se com outros professores'
+            : 'Envie avisos para professores e classes'
+          }
+        </p>
       </div>
 
       {/* Criar Novo Aviso */}
@@ -248,106 +220,191 @@ export const Announcements = () => {
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5" />
-              Novo Aviso
+              {user?.type === 'professor' ? 'Nova Mensagem' : 'Novo Aviso'}
             </CardTitle>
-            {!isCreating && (
-              <Button onClick={() => setIsCreating(true)}>
-                Criar Aviso
-              </Button>
-            )}
+            <Dialog open={isCreating} onOpenChange={setIsCreating}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {user?.type === 'professor' ? 'Enviar Mensagem' : 'Criar Aviso'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {user?.type === 'professor' ? 'Enviar Mensagem' : 'Criar Novo Aviso'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {user?.type === 'professor' 
+                      ? 'Envie uma mensagem para a secretaria ou outras classes'
+                      : 'Crie um aviso para enviar aos professores'
+                    }
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título</Label>
+                    <Input
+                      id="title"
+                      placeholder="Digite o título"
+                      value={newAnnouncement.title}
+                      onChange={(e) => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="content">Mensagem</Label>
+                    <Textarea
+                      id="content"
+                      placeholder="Digite sua mensagem"
+                      value={newAnnouncement.content}
+                      onChange={(e) => setNewAnnouncement(prev => ({ ...prev, content: e.target.value }))}
+                      rows={4}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="class">Destinatário</Label>
+                    <Select
+                      value={newAnnouncement.classId}
+                      onValueChange={(value) => setNewAnnouncement(prev => ({ ...prev, classId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o destinatário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {user?.type === 'secretario' && (
+                          <SelectItem value="all">Todas as Classes</SelectItem>
+                        )}
+                        {availableClasses.map(classData => (
+                          <SelectItem key={classData.id} value={classData.id}>
+                            {classData.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreating(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={createAnnouncement}>
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
-        
-        {isCreating && (
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Título do Aviso</Label>
-              <Input
-                id="title"
-                placeholder="Digite o título do aviso"
-                value={newAnnouncement.title}
-                onChange={(e) => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="content">Conteúdo</Label>
-              <Textarea
-                id="content"
-                placeholder="Digite o conteúdo do aviso"
-                value={newAnnouncement.content}
-                onChange={(e) => setNewAnnouncement(prev => ({ ...prev, content: e.target.value }))}
-                rows={4}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="class">Destinatário</Label>
-              <select
-                id="class"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={newAnnouncement.classId}
-                onChange={(e) => setNewAnnouncement(prev => ({ ...prev, classId: e.target.value }))}
-              >
-                <option value="all">Todas as Classes</option>
-                {classes.map(classData => (
-                  <option key={classData.id} value={classData.id}>
-                    {classData.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex gap-2 pt-2">
-              <Button onClick={createAnnouncement} className="flex items-center gap-2">
-                <Send className="w-4 h-4" />
-                Enviar Aviso
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setIsCreating(false);
-                  setNewAnnouncement({ title: '', content: '', classId: 'all' });
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        )}
       </Card>
 
-      {/* Lista de Avisos */}
+      {/* Lista de Avisos/Mensagens */}
       {announcements.length > 0 ? (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900">Avisos Enviados</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Conversas</h2>
           {announcements.map((announcement) => (
             <Card key={announcement.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{announcement.title}</CardTitle>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      {announcement.title}
+                    </CardTitle>
                     <CardDescription className="flex items-center gap-2 mt-1">
+                      <span>De: {announcement.authorName} ({announcement.authorType === 'secretario' ? 'Secretário' : 'Professor'})</span>
                       <Badge variant="outline">{getClassName(announcement.classId)}</Badge>
+                      <span className="text-xs">
+                        {new Date(announcement.createdAt).toLocaleString('pt-BR')}
+                      </span>
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteAnnouncement(announcement.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {(announcement.createdBy === user?.id || user?.type === 'secretario') && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteAnnouncement(announcement.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
+                <p className="text-gray-700 whitespace-pre-wrap mb-4">{announcement.content}</p>
+                
+                {/* Respostas */}
+                {announcement.replies && announcement.replies.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    <Separator />
+                    <h4 className="font-medium text-sm">Respostas:</h4>
+                    {announcement.replies.map((reply) => (
+                      <div key={reply.id} className="bg-gray-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-sm">
+                            {reply.authorName} ({reply.authorType === 'secretario' ? 'Secretário' : 'Professor'})
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(reply.createdAt).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 text-sm whitespace-pre-wrap">{reply.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Campo de resposta */}
+                {replyingTo === announcement.id ? (
+                  <div className="space-y-3">
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label htmlFor={`reply-${announcement.id}`}>Sua resposta:</Label>
+                      <Textarea
+                        id={`reply-${announcement.id}`}
+                        placeholder="Digite sua resposta..."
+                        value={replyContent}
+                        onChange={(e) => setReplyContent(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm"
+                        onClick={() => replyToAnnouncement(announcement.id)}
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        Enviar Resposta
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setReplyingTo(null);
+                          setReplyContent('');
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setReplyingTo(announcement.id)}
+                    >
+                      <Reply className="w-3 h-3 mr-1" />
+                      Responder
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -356,8 +413,13 @@ export const Announcements = () => {
         <Card>
           <CardContent className="text-center py-8">
             <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhum aviso criado</p>
-            <p className="text-sm text-gray-400">Crie seu primeiro aviso para as classes</p>
+            <p className="text-gray-500">Nenhuma conversa disponível</p>
+            <p className="text-sm text-gray-400">
+              {user?.type === 'professor' 
+                ? 'Aguarde mensagens da secretaria ou envie uma nova mensagem'
+                : 'Crie seu primeiro aviso para iniciar conversas com os professores'
+              }
+            </p>
           </CardContent>
         </Card>
       )}

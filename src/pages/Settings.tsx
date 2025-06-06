@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getUsers, saveUser, getClasses, saveClass, generateId, getChurchName, setChurchName } from '@/lib/storage';
@@ -9,8 +8,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, Church, Users, BookOpen, Trash2, Edit, Save, Plus, Mail, Key, Database } from 'lucide-react';
+import { Settings as SettingsIcon, Church, Users, BookOpen, Trash2, Edit, Save, Plus, Mail, Key, Database, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -23,6 +38,8 @@ export const Settings = () => {
   const [newPassword, setNewPassword] = useState('');
   const [isCreatingClass, setIsCreatingClass] = useState(false);
   const [newClassName, setNewClassName] = useState('');
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+  const [isAssigningTeacher, setIsAssigningTeacher] = useState(false);
 
   useEffect(() => {
     const allUsers = getUsers();
@@ -49,7 +66,6 @@ export const Settings = () => {
   const resetUserPassword = () => {
     if (!selectedUser || !newPassword.trim()) return;
     
-    // Simular reset de senha (em um sistema real seria mais complexo)
     toast({
       title: "Senha redefinida",
       description: `Nova senha definida para ${selectedUser.name}.`,
@@ -63,7 +79,6 @@ export const Settings = () => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
-    // Remover usuário das classes se for professor
     if (userToDelete.type === 'professor' && userToDelete.classIds) {
       userToDelete.classIds.forEach(classId => {
         const classData = classes.find(c => c.id === classId);
@@ -121,11 +136,76 @@ export const Settings = () => {
     });
   };
 
+  const assignTeacherToClass = (teacherId: string) => {
+    if (!selectedClass || !teacherId) return;
+
+    const teacher = users.find(u => u.id === teacherId);
+    if (!teacher) return;
+
+    // Atualizar a classe
+    const updatedClass = {
+      ...selectedClass,
+      teacherIds: [...selectedClass.teacherIds, teacherId],
+      teacherNames: [...selectedClass.teacherNames, teacher.name]
+    };
+
+    // Atualizar o usuário professor
+    const updatedTeacher = {
+      ...teacher,
+      classIds: [...(teacher.classIds || []), selectedClass.id]
+    };
+
+    saveClass(updatedClass);
+    saveUser(updatedTeacher);
+    
+    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+    setUsers(users.map(u => u.id === updatedTeacher.id ? updatedTeacher : u));
+    
+    setIsAssigningTeacher(false);
+    setSelectedClass(null);
+    
+    toast({
+      title: "Professor atribuído",
+      description: `${teacher.name} foi atribuído à classe ${updatedClass.name}.`
+    });
+  };
+
+  const removeTeacherFromClass = (classId: string, teacherId: string) => {
+    const classData = classes.find(c => c.id === classId);
+    const teacher = users.find(u => u.id === teacherId);
+    
+    if (!classData || !teacher) return;
+
+    // Atualizar a classe
+    const teacherIndex = classData.teacherIds.indexOf(teacherId);
+    const updatedClass = {
+      ...classData,
+      teacherIds: classData.teacherIds.filter(id => id !== teacherId),
+      teacherNames: classData.teacherNames.filter((_, index) => index !== teacherIndex)
+    };
+
+    // Atualizar o usuário professor
+    const updatedTeacher = {
+      ...teacher,
+      classIds: (teacher.classIds || []).filter(id => id !== classId)
+    };
+
+    saveClass(updatedClass);
+    saveUser(updatedTeacher);
+    
+    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+    setUsers(users.map(u => u.id === updatedTeacher.id ? updatedTeacher : u));
+    
+    toast({
+      title: "Professor removido",
+      description: `${teacher.name} foi removido da classe ${updatedClass.name}.`
+    });
+  };
+
   const deleteClass = (classId: string) => {
     const classToDelete = classes.find(c => c.id === classId);
     if (!classToDelete) return;
 
-    // Remover classe dos usuários professores
     const updatedUsers = users.map(user => {
       if (user.type === 'professor' && user.classIds?.includes(classId)) {
         return {
@@ -193,6 +273,8 @@ export const Settings = () => {
     );
   }
 
+  const professors = users.filter(u => u.type === 'professor');
+
   return (
     <div className="space-y-8">
       <div className="text-center">
@@ -255,7 +337,7 @@ export const Settings = () => {
                 Gerenciamento de Classes
               </CardTitle>
               <CardDescription>
-                Crie, edite ou remova classes da EBD
+                Crie, edite ou remova classes da EBD e atribua professores
               </CardDescription>
             </div>
             <Button onClick={() => setIsCreatingClass(true)}>
@@ -285,26 +367,98 @@ export const Settings = () => {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {classes.map(classData => (
-              <div key={classData.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <h4 className="font-medium">{classData.name}</h4>
-                  <p className="text-sm text-gray-500">
-                    {classData.students.length} alunos • {classData.teacherNames.length} professores
-                  </p>
+              <div key={classData.id} className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium text-lg">{classData.name}</h4>
+                    <p className="text-sm text-gray-500">
+                      {classData.students.length} alunos • {classData.teacherNames.length} professores
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedClass(classData);
+                        setIsAssigningTeacher(true);
+                      }}
+                    >
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Atribuir Professor
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteClass(classData.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteClass(classData.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                
+                {classData.teacherNames.length > 0 && (
+                  <div>
+                    <h5 className="font-medium text-sm mb-2">Professores Atribuídos:</h5>
+                    <div className="flex flex-wrap gap-2">
+                      {classData.teacherNames.map((teacherName, index) => (
+                        <div key={index} className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
+                          <span>{teacherName}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 text-red-500 hover:text-red-700"
+                            onClick={() => removeTeacherFromClass(classData.id, classData.teacherIds[index])}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
+
+          {/* Dialog para atribuir professor */}
+          <Dialog open={isAssigningTeacher} onOpenChange={setIsAssigningTeacher}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Atribuir Professor à Classe</DialogTitle>
+                <DialogDescription>
+                  Selecione um professor para atribuir à classe {selectedClass?.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Professor</Label>
+                  <Select onValueChange={assignTeacherToClass}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um professor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {professors
+                        .filter(prof => !selectedClass?.teacherIds.includes(prof.id))
+                        .map(professor => (
+                          <SelectItem key={professor.id} value={professor.id}>
+                            {professor.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAssigningTeacher(false)}>
+                  Cancelar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
 

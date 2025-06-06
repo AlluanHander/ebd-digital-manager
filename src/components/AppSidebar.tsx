@@ -11,7 +11,8 @@ import {
   BarChart3,
   Settings,
   FileText,
-  Cake
+  Cake,
+  BookOpen
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,27 +41,27 @@ export function AppSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-blue-100 text-blue-700 font-medium border-r-2 border-blue-600" : "hover:bg-gray-100 text-gray-700";
 
-  // Menu items for professors - simplified
+  // Menu items for professors - com acesso às suas classes
   const professorMenuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
-    { title: "Presença", url: "/attendance", icon: UserCheck },
-    { title: "Avisos", url: "/announcements", icon: MessageSquare },
+    { title: "Minhas Classes", url: "/attendance", icon: UserCheck },
+    { title: "Central de Avisos", url: "/announcements", icon: MessageSquare },
     { title: "Aniversários", url: "/birthdays", icon: Cake },
     { title: "Visitantes", url: "/visitors", icon: UserPlus },
     { title: "Inventário", url: "/inventory", icon: Package },
     { title: "Calendário", url: "/calendar", icon: Calendar },
   ];
 
-  // Menu items for secretaries - full control
+  // Menu items for secretaries - controle total
   const secretaryMenuItems = [
     { title: "Dashboard", url: "/dashboard", icon: Home },
-    { title: "Avisos", url: "/announcements", icon: MessageSquare },
+    { title: "Central de Avisos", url: "/announcements", icon: MessageSquare },
     { title: "Presença Geral", url: "/attendance", icon: UserCheck },
     { title: "Aniversários", url: "/birthdays", icon: Cake },
     { title: "Visitantes", url: "/visitors", icon: UserPlus },
     { title: "Inventário", url: "/inventory", icon: Package },
     { title: "Relatórios", url: "/reports", icon: BarChart3 },
-    { title: "Cadastros", url: "/users", icon: Users },
+    { title: "Usuários", url: "/users", icon: Users },
     { title: "Calendário", url: "/calendar", icon: Calendar },
   ];
 
