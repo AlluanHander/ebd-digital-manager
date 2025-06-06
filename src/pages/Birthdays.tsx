@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClasses, saveClass, generateId } from '@/lib/storage';
@@ -9,8 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Cake, Plus, Trash2, Gift, Calendar } from 'lucide-react';
+import { Cake, Plus, Trash2, Gift, Calendar, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Birthdays = () => {
   const { user } = useAuth();
@@ -22,6 +30,8 @@ export const Birthdays = () => {
     date: ''
   });
   const [todayBirthdays, setTodayBirthdays] = useState<Birthday[]>([]);
+  const [editingBirthday, setEditingBirthday] = useState<Birthday | null>(null);
+  const [isAddingBirthday, setIsAddingBirthday] = useState(false);
 
   useEffect(() => {
     const allClasses = getClasses();
@@ -78,6 +88,7 @@ export const Birthdays = () => {
     setSelectedClass(updatedClass);
     setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
     setNewBirthday({ studentName: '', date: '' });
+    setIsAddingBirthday(false);
     
     // Atualizar aniversariantes de hoje se necessário
     const today = new Date();
@@ -88,6 +99,36 @@ export const Birthdays = () => {
     toast({
       title: "Aniversário cadastrado",
       description: `${birthday.studentName} foi adicionado à lista de aniversários.`
+    });
+  };
+
+  const editBirthday = (birthday: Birthday) => {
+    setEditingBirthday(birthday);
+  };
+
+  const saveEditBirthday = () => {
+    if (!editingBirthday || !selectedClass) return;
+
+    const birthdayDate = new Date(editingBirthday.date);
+    const updatedBirthday = {
+      ...editingBirthday,
+      month: birthdayDate.getMonth() + 1,
+      day: birthdayDate.getDate(),
+    };
+
+    const updatedClass = {
+      ...selectedClass,
+      birthdays: selectedClass.birthdays.map(b => b.id === updatedBirthday.id ? updatedBirthday : b)
+    };
+
+    saveClass(updatedClass);
+    setSelectedClass(updatedClass);
+    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+    setEditingBirthday(null);
+    
+    toast({
+      title: "Aniversário atualizado",
+      description: "Aniversário foi atualizado com sucesso."
     });
   };
 
@@ -214,48 +255,67 @@ export const Birthdays = () => {
       )}
 
       {selectedClass ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Formulário de Cadastro */}
+        <div className="space-y-6">
+          {/* Add Birthday Button */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Cadastrar Aniversário
-              </CardTitle>
-              <CardDescription>
-                Classe: {selectedClass.name}
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Gerenciar Aniversários
+                </CardTitle>
+                <Dialog open={isAddingBirthday} onOpenChange={setIsAddingBirthday}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Novo Aniversário
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cadastrar Aniversário</DialogTitle>
+                      <DialogDescription>
+                        Adicione um novo aniversário à classe {selectedClass.name}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="student-name">Nome do Aluno</Label>
+                        <Input
+                          id="student-name"
+                          placeholder="Digite o nome do aluno"
+                          value={newBirthday.studentName}
+                          onChange={(e) => setNewBirthday(prev => ({ ...prev, studentName: e.target.value }))}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="birthday-date">Data de Nascimento</Label>
+                        <Input
+                          id="birthday-date"
+                          type="date"
+                          value={newBirthday.date}
+                          onChange={(e) => setNewBirthday(prev => ({ ...prev, date: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddingBirthday(false)}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={addBirthday}>
+                        <Cake className="w-4 h-4 mr-2" />
+                        Cadastrar Aniversário
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="student-name">Nome do Aluno</Label>
-                <Input
-                  id="student-name"
-                  placeholder="Digite o nome do aluno"
-                  value={newBirthday.studentName}
-                  onChange={(e) => setNewBirthday(prev => ({ ...prev, studentName: e.target.value }))}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="birthday-date">Data de Nascimento</Label>
-                <Input
-                  id="birthday-date"
-                  type="date"
-                  value={newBirthday.date}
-                  onChange={(e) => setNewBirthday(prev => ({ ...prev, date: e.target.value }))}
-                />
-              </div>
-              
-              <Button onClick={addBirthday} className="w-full">
-                <Cake className="w-4 h-4 mr-2" />
-                Cadastrar Aniversário
-              </Button>
-            </CardContent>
           </Card>
 
           {/* Lista de Aniversários */}
-          <Card className="lg:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
@@ -293,6 +353,14 @@ export const Birthdays = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => editBirthday(birthday)}
+                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => removeBirthday(birthday.id)}
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
@@ -311,6 +379,48 @@ export const Birthdays = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Edit Birthday Dialog */}
+          <Dialog open={editingBirthday !== null} onOpenChange={(open) => !open && setEditingBirthday(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Aniversário</DialogTitle>
+                <DialogDescription>
+                  Edite as informações do aniversário
+                </DialogDescription>
+              </DialogHeader>
+              {editingBirthday && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-student-name">Nome do Aluno</Label>
+                    <Input
+                      id="edit-student-name"
+                      value={editingBirthday.studentName}
+                      onChange={(e) => setEditingBirthday({...editingBirthday, studentName: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-birthday-date">Data de Nascimento</Label>
+                    <Input
+                      id="edit-birthday-date"
+                      type="date"
+                      value={editingBirthday.date}
+                      onChange={(e) => setEditingBirthday({...editingBirthday, date: e.target.value})}
+                    />
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingBirthday(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveEditBirthday}>
+                  Salvar Alterações
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <Card>

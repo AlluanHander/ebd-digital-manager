@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClasses, saveClass, generateId } from '@/lib/storage';
@@ -9,8 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Plus, Trash2, Send } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Send, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Announcements = () => {
   const { user } = useAuth();
@@ -119,6 +127,65 @@ export const Announcements = () => {
           <p className="text-gray-600">Leia os avisos transmitidos pela secretaria</p>
         </div>
 
+        {/* Add Quick Announcement Button for Professors */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Criar Aviso Rápido
+              </CardTitle>
+              <Dialog open={isCreating} onOpenChange={setIsCreating}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Aviso
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Criar Aviso para a Classe</DialogTitle>
+                    <DialogDescription>
+                      Crie um aviso para sua classe
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Título do Aviso</Label>
+                      <Input
+                        id="title"
+                        placeholder="Digite o título do aviso"
+                        value={newAnnouncement.title}
+                        onChange={(e) => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="content">Conteúdo</Label>
+                      <Textarea
+                        id="content"
+                        placeholder="Digite o conteúdo do aviso"
+                        value={newAnnouncement.content}
+                        onChange={(e) => setNewAnnouncement(prev => ({ ...prev, content: e.target.value }))}
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreating(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={createAnnouncement}>
+                      <Send className="w-4 h-4 mr-2" />
+                      Enviar Aviso
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+        </Card>
+
         {announcements.length > 0 ? (
           <div className="space-y-4">
             {announcements.map((announcement) => (
@@ -132,9 +199,21 @@ export const Announcements = () => {
                         <Badge variant="outline">{getClassName(announcement.classId)}</Badge>
                       </CardDescription>
                     </div>
-                    <span className="text-sm text-gray-500">
-                      {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">
+                        {new Date(announcement.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                      {announcement.createdBy === user?.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteAnnouncement(announcement.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -148,7 +227,7 @@ export const Announcements = () => {
             <CardContent className="text-center py-8">
               <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">Nenhum aviso disponível</p>
-              <p className="text-sm text-gray-400">Aguarde os avisos da secretaria</p>
+              <p className="text-sm text-gray-400">Aguarde os avisos da secretaria ou crie um aviso para sua classe</p>
             </CardContent>
           </Card>
         )}

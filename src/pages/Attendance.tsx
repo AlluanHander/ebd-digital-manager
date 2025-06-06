@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClasses, saveClass, getAttendanceRecords, saveAttendance, generateId, getCurrentQuarter, getCurrentWeek } from '@/lib/storage';
@@ -9,8 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { UserCheck, UserPlus, Trash2, Users } from 'lucide-react';
+import { UserCheck, UserPlus, Trash2, Users, Plus, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Attendance = () => {
   const { user } = useAuth();
@@ -20,6 +28,8 @@ export const Attendance = () => {
   const [newStudentName, setNewStudentName] = useState('');
   const [attendanceData, setAttendanceData] = useState<{[key: string]: boolean}>({});
   const [todayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   useEffect(() => {
     const allClasses = getClasses();
@@ -72,10 +82,34 @@ export const Attendance = () => {
     setSelectedClass(updatedClass);
     setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
     setNewStudentName('');
+    setIsAddingStudent(false);
     
     toast({
       title: "Aluno adicionado",
       description: `${newStudent.name} foi adicionado à classe.`
+    });
+  };
+
+  const editStudent = (student: Student) => {
+    setEditingStudent(student);
+  };
+
+  const saveEditStudent = () => {
+    if (!editingStudent || !selectedClass) return;
+
+    const updatedClass = {
+      ...selectedClass,
+      students: selectedClass.students.map(s => s.id === editingStudent.id ? editingStudent : s)
+    };
+
+    saveClass(updatedClass);
+    setSelectedClass(updatedClass);
+    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+    setEditingStudent(null);
+    
+    toast({
+      title: "Aluno atualizado",
+      description: "Dados do aluno foram atualizados com sucesso."
     });
   };
 
@@ -197,100 +231,193 @@ export const Attendance = () => {
       </div>
 
       {selectedClass ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Informações da Classe */}
-          <Card className="lg:col-span-1">
+        <div className="space-y-6">
+          {/* Add Student Button */}
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                {selectedClass.name}
-              </CardTitle>
-              <CardDescription>
-                Data: {new Date(todayDate).toLocaleDateString('pt-BR')}
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  Gerenciar Alunos
+                </CardTitle>
+                <Dialog open={isAddingStudent} onOpenChange={setIsAddingStudent}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Aluno
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Novo Aluno</DialogTitle>
+                      <DialogDescription>
+                        Adicione um novo aluno à classe {selectedClass.name}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="student-name">Nome do Aluno</Label>
+                        <Input
+                          id="student-name"
+                          placeholder="Digite o nome do aluno"
+                          value={newStudentName}
+                          onChange={(e) => setNewStudentName(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addStudent()}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddingStudent(false)}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={addStudent}>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Adicionar Aluno
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                <span className="text-sm font-medium">Total de Alunos:</span>
-                <Badge variant="outline">{getTotalStudents()}</Badge>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="text-sm font-medium">Presentes Hoje:</span>
-                <Badge variant="default">{getTodayAttendanceCount()}</Badge>
-              </div>
-              
-              {/* Adicionar Novo Aluno */}
-              <div className="space-y-3 pt-4 border-t">
-                <Label htmlFor="new-student" className="text-sm font-medium">
-                  Adicionar Novo Aluno
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="new-student"
-                    placeholder="Nome do aluno"
-                    value={newStudentName}
-                    onChange={(e) => setNewStudentName(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addStudent()}
-                  />
-                  <Button onClick={addStudent} size="icon">
-                    <UserPlus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
           </Card>
 
-          {/* Lista de Alunos e Presença */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="w-5 h-5" />
-                Lista de Presença
-              </CardTitle>
-              <CardDescription>
-                Marque os alunos presentes na aula de hoje
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {selectedClass.students.length > 0 ? (
-                <>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {selectedClass.students.map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            checked={attendanceData[student.id] || false}
-                            onCheckedChange={() => toggleAttendance(student.id)}
-                          />
-                          <span className="font-medium">{student.name}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeStudent(student.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <Button onClick={saveAttendanceData} className="w-full">
-                      Salvar Presença do Dia
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Informações da Classe */}
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  {selectedClass.name}
+                </CardTitle>
+                <CardDescription>
+                  Data: {new Date(todayDate).toLocaleDateString('pt-BR')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm font-medium">Total de Alunos:</span>
+                  <Badge variant="outline">{getTotalStudents()}</Badge>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <span className="text-sm font-medium">Presentes Hoje:</span>
+                  <Badge variant="default">{getTodayAttendanceCount()}</Badge>
+                </div>
+                
+                {/* Adicionar Novo Aluno */}
+                <div className="space-y-3 pt-4 border-t">
+                  <Label htmlFor="new-student" className="text-sm font-medium">
+                    Adicionar Novo Aluno
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="new-student"
+                      placeholder="Nome do aluno"
+                      value={newStudentName}
+                      onChange={(e) => setNewStudentName(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addStudent()}
+                    />
+                    <Button onClick={addStudent} size="icon">
+                      <UserPlus className="w-4 h-4" />
                     </Button>
                   </div>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <UserPlus className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Nenhum aluno cadastrado</p>
-                  <p className="text-sm text-gray-400">Adicione o primeiro aluno para começar</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Lista de Alunos e Presença */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="w-5 h-5" />
+                  Lista de Presença
+                </CardTitle>
+                <CardDescription>
+                  Marque os alunos presentes na aula de hoje
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {selectedClass.students.length > 0 ? (
+                  <>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {selectedClass.students.map((student) => (
+                        <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox
+                              checked={attendanceData[student.id] || false}
+                              onCheckedChange={() => toggleAttendance(student.id)}
+                            />
+                            <span className="font-medium">{student.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => editStudent(student)}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeStudent(student.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="pt-4 border-t">
+                      <Button onClick={saveAttendanceData} className="w-full">
+                        Salvar Presença do Dia
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <UserPlus className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">Nenhum aluno cadastrado</p>
+                    <p className="text-sm text-gray-400">Adicione o primeiro aluno para começar</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Edit Student Dialog */}
+          <Dialog open={editingStudent !== null} onOpenChange={(open) => !open && setEditingStudent(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Aluno</DialogTitle>
+                <DialogDescription>
+                  Edite as informações do aluno
+                </DialogDescription>
+              </DialogHeader>
+              {editingStudent && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-student-name">Nome do Aluno</Label>
+                    <Input
+                      id="edit-student-name"
+                      value={editingStudent.name}
+                      onChange={(e) => setEditingStudent({...editingStudent, name: e.target.value})}
+                    />
+                  </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingStudent(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveEditStudent}>
+                  Salvar Alterações
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <Card>
