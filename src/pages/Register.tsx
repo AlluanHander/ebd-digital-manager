@@ -15,6 +15,7 @@ export const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    username: '',
     password: '',
     confirmPassword: '',
     userType: 'professor' as 'professor' | 'secretario',
@@ -54,11 +55,13 @@ export const Register = () => {
         return;
       }
 
-      // Create user
+      // Create user with all required fields
       const newUser = {
         id: generateId(),
         name: formData.name,
         email: formData.email,
+        username: formData.username,
+        password: formData.password,
         type: formData.userType,
         classIds: [],
         churchName: formData.churchName,
@@ -117,6 +120,25 @@ export const Register = () => {
                     placeholder="Digite seu nome completo"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Username */}
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                  Usuário
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Digite seu usuário (ex: joao123)"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
                     className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
