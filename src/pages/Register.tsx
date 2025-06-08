@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { saveUser, generateId } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Church, User, Mail, Lock, UserPlus } from 'lucide-react';
+import { Church, User, Mail, Lock, UserPlus, Phone } from 'lucide-react';
 
 export const Register = () => {
   const [formData, setFormData] = useState({
@@ -18,6 +18,7 @@ export const Register = () => {
     username: '',
     password: '',
     confirmPassword: '',
+    phone: '',
     userType: 'professor' as 'professor' | 'secretario',
     churchName: ''
   });
@@ -55,13 +56,14 @@ export const Register = () => {
         return;
       }
 
-      // Create user with all required fields
+      // Create user with all required fields including phone
       const newUser = {
         id: generateId(),
         name: formData.name,
         email: formData.email,
         username: formData.username,
         password: formData.password,
+        phone: formData.phone,
         type: formData.userType,
         classIds: [],
         churchName: formData.churchName,
@@ -158,6 +160,25 @@ export const Register = () => {
                     placeholder="Digite seu email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                  Telefone
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Digite seu telefone"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
                     className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
