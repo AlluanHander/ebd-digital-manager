@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { getUsers } from '@/lib/storage';
+import { findProfessorByCredentials, setLoggedProfessor } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Church, User, Lock, UserCheck, GraduationCap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
@@ -59,33 +59,35 @@ export const Login = () => {
           });
         }
       } else {
-        // Login do professor - verificar no localStorage
-        const users = getUsers();
-        const user = users.find(u => 
-          u.username === username && 
-          u.password === password &&
-          u.type === 'professor'
-        );
+        // Login do professor - verificar usando a nova função
+        console.log('Tentando login do professor com:', { username, password });
+        
+        const professor = findProfessorByCredentials(username, password);
 
-        if (!user) {
+        if (!professor) {
           toast({
             title: "Erro no login",
-            description: "Usuário ou senha incorretos.",
+            description: "Usuário ou senha incorretos. Verifique se o professor foi cadastrado pelo secretário.",
             variant: "destructive",
           });
           return;
         }
 
-        login(user);
+        console.log('Login do professor bem-sucedido:', professor);
+
+        // Salvar professor logado
+        setLoggedProfessor(professor);
+        login(professor);
         
         toast({
           title: "Login realizado com sucesso!",
-          description: `Bem-vindo(a), ${user.name}!`,
+          description: `Bem-vindo(a), ${professor.name}!`,
         });
 
         navigate('/professor-panel');
       }
     } catch (error) {
+      console.error('Erro no login:', error);
       toast({
         title: "Erro no login",
         description: "Ocorreu um erro ao fazer login. Tente novamente.",
@@ -207,6 +209,14 @@ export const Login = () => {
                 <p className="font-medium mb-1">💡 Credenciais do secretário:</p>
                 <p>• Usuário: admin</p>
                 <p>• Senha: 1234</p>
+              </div>
+            )}
+
+            {userType === 'professor' && (
+              <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <p className="font-medium mb-1">📝 Para professores:</p>
+                <p>• Use o usuário e senha criados pelo secretário</p>
+                <p>• Se não conseguir entrar, peça ao secretário para verificar seus dados</p>
               </div>
             )}
           </CardContent>

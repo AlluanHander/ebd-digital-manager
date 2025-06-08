@@ -12,6 +12,8 @@ const STORAGE_KEYS = {
   ANNOUNCEMENTS: 'ebd_announcements',
   BIRTHDAYS: 'ebd_birthdays',
   INVENTORY: 'ebd_inventory',
+  PROFESSORS: 'ebd_professors', // Nova chave específica para professores
+  LOGGED_PROFESSOR: 'ebd_logged_professor', // Professor logado
 };
 
 // Utility functions
@@ -45,6 +47,7 @@ export const getStorageItem = <T>(key: string): T | null => {
 export const setStorageItem = <T>(key: string, value: T): void => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    console.log(`Saved to localStorage [${key}]:`, value);
   } catch (error) {
     console.error(`Error setting ${key} to storage:`, error);
   }
@@ -58,7 +61,60 @@ export const removeStorageItem = (key: string): void => {
   }
 };
 
-// User management
+// Funções específicas para professores
+export const saveProfessor = (professor: User): void => {
+  console.log('Salvando professor:', professor);
+  const professores = getProfessors();
+  const existingIndex = professores.findIndex(p => p.id === professor.id || p.username === professor.username);
+  
+  if (existingIndex >= 0) {
+    professores[existingIndex] = professor;
+  } else {
+    professores.push(professor);
+  }
+  
+  setStorageItem(STORAGE_KEYS.PROFESSORS, professores);
+  console.log('Professores salvos no localStorage:', professores);
+};
+
+export const getProfessors = (): User[] => {
+  const professores = getStorageItem<User[]>(STORAGE_KEYS.PROFESSORS) || [];
+  console.log('Professores carregados do localStorage:', professores);
+  return professores;
+};
+
+export const findProfessorByCredentials = (username: string, password: string): User | null => {
+  const professores = getProfessors();
+  console.log('Procurando professor com credenciais:', { username, password });
+  console.log('Professores disponíveis:', professores);
+  
+  const professor = professores.find(p => 
+    p.username === username && 
+    p.password === password &&
+    p.type === 'professor'
+  );
+  
+  console.log('Professor encontrado:', professor);
+  return professor || null;
+};
+
+export const setLoggedProfessor = (professor: User): void => {
+  console.log('Salvando professor logado:', professor);
+  setStorageItem(STORAGE_KEYS.LOGGED_PROFESSOR, professor);
+};
+
+export const getLoggedProfessor = (): User | null => {
+  const professor = getStorageItem<User>(STORAGE_KEYS.LOGGED_PROFESSOR);
+  console.log('Professor logado carregado:', professor);
+  return professor;
+};
+
+export const logoutProfessor = (): void => {
+  console.log('Fazendo logout do professor');
+  removeStorageItem(STORAGE_KEYS.LOGGED_PROFESSOR);
+};
+
+// User management (mantendo compatibilidade)
 export const getUsers = (): User[] => {
   return getStorageItem<User[]>(STORAGE_KEYS.USERS) || [];
 };
@@ -74,6 +130,11 @@ export const saveUser = (user: User): void => {
   }
   
   setStorageItem(STORAGE_KEYS.USERS, users);
+  
+  // Se for professor, salvar também na lista específica de professores
+  if (user.type === 'professor') {
+    saveProfessor(user);
+  }
 };
 
 export const getCurrentUser = (): User | null => {
@@ -86,6 +147,7 @@ export const setCurrentUser = (user: User): void => {
 
 export const logout = (): void => {
   removeStorageItem(STORAGE_KEYS.CURRENT_USER);
+  logoutProfessor();
 };
 
 // Church management

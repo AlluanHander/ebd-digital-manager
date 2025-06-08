@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUsers, saveUser, getClasses, saveClass, generateId } from '@/lib/storage';
+import { getUsers, saveUser, getClasses, saveClass, generateId, saveProfessor, getProfessors } from '@/lib/storage';
 import { User, Class } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,9 +31,23 @@ export const Users = () => {
 
   useEffect(() => {
     const allUsers = getUsers();
+    const professors = getProfessors();
     const allClasses = getClasses();
-    setUsers(allUsers);
+    
+    // Combinar usuários e professores, priorizando os dados dos professores
+    const combinedUsers = [...allUsers];
+    professors.forEach(prof => {
+      const existingIndex = combinedUsers.findIndex(u => u.id === prof.id || u.username === prof.username);
+      if (existingIndex >= 0) {
+        combinedUsers[existingIndex] = prof;
+      } else {
+        combinedUsers.push(prof);
+      }
+    });
+    
+    setUsers(combinedUsers);
     setClasses(allClasses);
+    console.log('Usuários carregados:', combinedUsers);
   }, []);
 
   const createUser = () => {
@@ -69,7 +83,15 @@ export const Users = () => {
       createdAt: new Date().toISOString()
     };
 
+    console.log('Criando novo usuário:', user);
+
+    // Salvar no sistema geral
     saveUser(user);
+    
+    // Se for professor, salvar também na lista específica de professores
+    if (user.type === 'professor') {
+      saveProfessor(user);
+    }
     
     // Atualizar classes se necessário
     if (newUser.type === 'professor' && newUser.classIds.length > 0) {
@@ -92,8 +114,10 @@ export const Users = () => {
     
     toast({
       title: "Professor cadastrado",
-      description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}`
+      description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}, Senha: ${user.password}`
     });
+
+    console.log('Professor cadastrado com sucesso:', user);
   };
 
   const updateUser = () => {
@@ -131,6 +155,10 @@ export const Users = () => {
     };
 
     saveUser(updatedUser);
+    if (updatedUser.type === 'professor') {
+      saveProfessor(updatedUser);
+    }
+    
     setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
     setEditingUser(null);
     setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
@@ -362,6 +390,7 @@ export const Users = () => {
                     <div className="space-y-1">
                       <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{user.name}</h3>
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">Senha: {user.password}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Telefone: {user.phone}</p>
                     </div>
                   </div>
