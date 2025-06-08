@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { getUsers, saveUser, getClasses, saveClass, generateId } from '@/lib/storage';
 import { User, Class } from '@/types';
@@ -24,6 +23,7 @@ export const Users = () => {
     email: '',
     username: '',
     password: '',
+    phone: '',
     type: 'professor' as 'professor' | 'secretario',
     churchName: '',
     classIds: [] as string[]
@@ -37,10 +37,10 @@ export const Users = () => {
   }, []);
 
   const createUser = () => {
-    if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim() || !newUser.churchName.trim()) {
+    if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim() || !newUser.phone.trim()) {
       toast({
         title: "Erro no cadastro",
-        description: "Preencha todos os campos obrigatórios (Nome, Usuário, Senha e Igreja).",
+        description: "Preencha todos os campos obrigatórios (Nome, Usuário, Senha e Telefone).",
         variant: "destructive"
       });
       return;
@@ -62,9 +62,10 @@ export const Users = () => {
       email: newUser.email.trim() || `${newUser.username}@ebd.local`,
       username: newUser.username.trim(),
       password: newUser.password,
+      phone: newUser.phone.trim(),
       type: newUser.type,
       classIds: newUser.classIds,
-      churchName: newUser.churchName.trim(),
+      churchName: 'Igreja Local',
       createdAt: new Date().toISOString()
     };
 
@@ -86,11 +87,11 @@ export const Users = () => {
     }
 
     setUsers([...users, user]);
-    setNewUser({ name: '', email: '', username: '', password: '', type: 'professor', churchName: '', classIds: [] });
+    setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
     setIsCreating(false);
     
     toast({
-      title: "Usuário criado",
+      title: "Professor cadastrado",
       description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}`
     });
   };
@@ -98,7 +99,7 @@ export const Users = () => {
   const updateUser = () => {
     if (!editingUser) return;
 
-    if (!newUser.name.trim() || !newUser.username.trim() || !newUser.churchName.trim()) {
+    if (!newUser.name.trim() || !newUser.username.trim() || !newUser.phone.trim()) {
       toast({
         title: "Erro na atualização",
         description: "Preencha todos os campos obrigatórios.",
@@ -122,19 +123,20 @@ export const Users = () => {
       name: newUser.name.trim(),
       email: newUser.email.trim() || `${newUser.username}@ebd.local`,
       username: newUser.username.trim(),
-      password: newUser.password || editingUser.password, // Manter senha existente se não informada
+      password: newUser.password || editingUser.password,
+      phone: newUser.phone.trim(),
       type: newUser.type,
-      churchName: newUser.churchName.trim(),
+      churchName: 'Igreja Local',
       classIds: newUser.classIds
     };
 
     saveUser(updatedUser);
     setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
     setEditingUser(null);
-    setNewUser({ name: '', email: '', username: '', password: '', type: 'professor', churchName: '', classIds: [] });
+    setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
     
     toast({
-      title: "Usuário atualizado",
+      title: "Professor atualizado",
       description: "As informações foram atualizadas com sucesso."
     });
   };
@@ -172,7 +174,8 @@ export const Users = () => {
       name: user.name,
       email: user.email,
       username: user.username,
-      password: '', // Deixar vazio para não alterar se não informado
+      password: '',
+      phone: user.phone,
       type: user.type,
       churchName: user.churchName,
       classIds: user.classIds || []
@@ -183,7 +186,7 @@ export const Users = () => {
   const cancelEdit = () => {
     setEditingUser(null);
     setIsCreating(false);
-    setNewUser({ name: '', email: '', username: '', password: '', type: 'professor', churchName: '', classIds: [] });
+    setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
   };
 
   const toggleClassAssignment = (classId: string) => {
@@ -208,8 +211,8 @@ export const Users = () => {
   return (
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Cadastros</h1>
-        <p className="text-sm sm:text-base text-gray-600">Gerencie professores e secretários do sistema</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Cadastro de Professores</h1>
+        <p className="text-sm sm:text-base text-gray-600">Gerencie os professores do sistema</p>
       </div>
 
       {/* Estatísticas */}
@@ -257,11 +260,11 @@ export const Users = () => {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
-              {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+              {editingUser ? 'Editar Professor' : 'Novo Professor'}
             </CardTitle>
             {!isCreating && (
               <Button onClick={() => setIsCreating(true)} size="sm">
-                Cadastrar Usuário
+                Cadastrar Professor
               </Button>
             )}
           </div>
@@ -271,7 +274,7 @@ export const Users = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
+                <Label htmlFor="name" className="text-sm font-medium">Nome do Professor *</Label>
                 <Input
                   id="name"
                   placeholder="Digite o nome completo"
@@ -294,91 +297,41 @@ export const Users = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">
-                    Senha {editingUser ? '(deixe vazio para não alterar)' : '*'}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder={editingUser ? "Nova senha (opcional)" : "ex: 123456"}
-                      value={newUser.password}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
-                      className="text-sm pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-2"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email (opcional)</Label>
+                  <Label htmlFor="phone" className="text-sm font-medium">Telefone *</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="Digite o email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                    className="text-sm"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="church" className="text-sm font-medium">Nome da Igreja *</Label>
-                  <Input
-                    id="church"
-                    placeholder="Digite o nome da igreja"
-                    value={newUser.churchName}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, churchName: e.target.value }))}
+                    id="phone"
+                    placeholder="(11) 99999-9999"
+                    value={newUser.phone}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
                     className="text-sm"
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="type" className="text-sm font-medium">Tipo de Usuário *</Label>
-                <Select value={newUser.type} onValueChange={(value: 'professor' | 'secretario') => 
-                  setNewUser(prev => ({ ...prev, type: value, classIds: value === 'secretario' ? [] : prev.classIds }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="professor">Professor</SelectItem>
-                    <SelectItem value="secretario">Secretário</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            
-              {/* Atribuição de Classes (apenas para professores) */}
-              {newUser.type === 'professor' && classes.length > 0 && (
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Atribuir Classes</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {classes.map(classData => (
-                      <div key={classData.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`class-${classData.id}`}
-                          checked={newUser.classIds.includes(classData.id)}
-                          onCheckedChange={() => toggleClassAssignment(classData.id)}
-                        />
-                        <Label htmlFor={`class-${classData.id}`} className="text-xs sm:text-sm">
-                          {classData.name}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Senha {editingUser ? '(deixe vazio para não alterar)' : '*'}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder={editingUser ? "Nova senha (opcional)" : "ex: 123456"}
+                    value={newUser.password}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+                    className="text-sm pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-2"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -409,14 +362,7 @@ export const Users = () => {
                     <div className="space-y-1">
                       <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{user.name}</h3>
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">{user.email}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">{user.churchName}</p>
-                      {user.classIds && user.classIds.length > 0 && (
-                        <div className="mt-1">
-                          <span className="text-xs text-gray-500">Classes: </span>
-                          <span className="text-xs">{getClassNames(user.classIds)}</span>
-                        </div>
-                      )}
+                      <p className="text-xs sm:text-sm text-gray-500">Telefone: {user.phone}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -445,56 +391,6 @@ export const Users = () => {
             <div className="text-center py-6 sm:py-8">
               <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-sm sm:text-base text-gray-500">Nenhum professor cadastrado</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Lista de Secretários */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Secretários Cadastrados</CardTitle>
-          <CardDescription className="text-sm">Lista de todos os secretários do sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {secretaryUsers.length > 0 ? (
-            <div className="space-y-3">
-              {secretaryUsers.map(user => (
-                <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="space-y-1">
-                      <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{user.name}</h3>
-                      <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">{user.email}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">{user.churchName}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Badge variant="default" className="text-xs">Secretário</Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => startEdit(user)}
-                      className="h-8 w-8"
-                    >
-                      <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteUser(user.id)}
-                      className="text-red-500 hover:text-red-700 h-8 w-8"
-                    >
-                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 sm:py-8">
-              <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-sm sm:text-base text-gray-500">Nenhum secretário cadastrado</p>
             </div>
           )}
         </CardContent>

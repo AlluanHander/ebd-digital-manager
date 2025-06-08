@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,8 +7,10 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
 
 // Pages
+import { Home } from "@/pages/Home";
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
+import { ProfessorPanel } from "@/pages/ProfessorPanel";
 import { Dashboard } from "@/pages/Dashboard";
 import { Attendance } from "@/pages/Attendance";
 import { Announcements } from "@/pages/Announcements";
@@ -40,9 +41,16 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route path="/" element={
         <PublicRoute>
+          <Home />
+        </PublicRoute>
+      } />
+      
+      <Route path="/login/:userType" element={
+        <PublicRoute>
           <Login />
         </PublicRoute>
       } />
+      
       <Route path="/register" element={
         <PublicRoute>
           <Register />
@@ -50,6 +58,12 @@ const AppRoutes = () => {
       } />
 
       {/* Protected Routes */}
+      <Route path="/professor-panel" element={
+        <ProtectedRoute>
+          <ProfessorPanel />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Layout>

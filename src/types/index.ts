@@ -1,9 +1,11 @@
+
 export interface User {
   id: string;
   name: string;
   email: string;
   username: string; // Campo para usuário (ex: joao123)
   password: string; // Campo para senha
+  phone: string; // Campo para telefone
   type: 'professor' | 'secretario';
   classIds?: string[];
   churchName: string;
