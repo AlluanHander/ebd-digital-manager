@@ -15,11 +15,20 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [secretaryCredentials, setSecretaryCredentials] = useState({ username: 'admin', password: '1234' });
   
   const { userType } = useParams<{ userType: 'secretario' | 'professor' }>();
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Carregar credenciais do secretário do localStorage
+    const savedCredentials = localStorage.getItem('secretary_credentials');
+    if (savedCredentials) {
+      setSecretaryCredentials(JSON.parse(savedCredentials));
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,15 +36,15 @@ export const Login = () => {
 
     try {
       if (userType === 'secretario') {
-        // Dados fixos para o secretário
-        if (username === 'admin' && password === '1234') {
+        // Verificar com as credenciais salvas do secretário
+        if (username === secretaryCredentials.username && password === secretaryCredentials.password) {
           // Criar um usuário secretário mockado
           const secretaryUser = {
             id: 'secretary-1',
             name: 'Administrador',
             email: 'admin@ebd.local',
-            username: 'admin',
-            password: '1234',
+            username: secretaryCredentials.username,
+            password: secretaryCredentials.password,
             phone: '',
             type: 'secretario' as const,
             classIds: [],
@@ -54,7 +63,7 @@ export const Login = () => {
         } else {
           toast({
             title: "Erro no login",
-            description: "Credenciais inválidas. Use: admin / 1234",
+            description: `Credenciais inválidas. Use: ${secretaryCredentials.username} / ${secretaryCredentials.password}`,
             variant: "destructive",
           });
         }
@@ -147,7 +156,7 @@ export const Login = () => {
                   <Input
                     id="username"
                     type="text"
-                    placeholder={userType === 'secretario' ? "Digite: admin" : "Digite seu usuário"}
+                    placeholder={userType === 'secretario' ? `Digite: ${secretaryCredentials.username}` : "Digite seu usuário"}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
@@ -166,7 +175,7 @@ export const Login = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={userType === 'secretario' ? "Digite: 1234" : "Digite sua senha"}
+                    placeholder={userType === 'secretario' ? `Digite: ${secretaryCredentials.password}` : "Digite sua senha"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
@@ -206,9 +215,10 @@ export const Login = () => {
 
             {userType === 'secretario' && (
               <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium mb-1">💡 Credenciais do secretário:</p>
-                <p>• Usuário: admin</p>
-                <p>• Senha: 1234</p>
+                <p className="font-medium mb-1">💡 Credenciais atuais do secretário:</p>
+                <p>• Usuário: {secretaryCredentials.username}</p>
+                <p>• Senha: {secretaryCredentials.password}</p>
+                <p className="text-xs text-gray-400 mt-1">Configuráveis no painel administrativo</p>
               </div>
             )}
 

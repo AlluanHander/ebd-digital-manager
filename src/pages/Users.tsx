@@ -8,16 +8,22 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export const Users = () => {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showSecretaryPassword, setShowSecretaryPassword] = useState(false);
+  const [isEditingSecretary, setIsEditingSecretary] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState<string | null>(null);
+  
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -29,12 +35,21 @@ export const Users = () => {
     classIds: [] as string[]
   });
 
+  const [secretaryCredentials, setSecretaryCredentials] = useState({
+    username: 'admin',
+    password: '1234'
+  });
+
+  const [passwordChange, setPasswordChange] = useState({
+    userId: '',
+    newPassword: ''
+  });
+
   useEffect(() => {
     const allUsers = getUsers();
     const professors = getProfessors();
     const allClasses = getClasses();
     
-    // Combinar usuários e professores, priorizando os dados dos professores
     const combinedUsers = [...allUsers];
     professors.forEach(prof => {
       const existingIndex = combinedUsers.findIndex(u => u.id === prof.id || u.username === prof.username);
@@ -48,7 +63,65 @@ export const Users = () => {
     setUsers(combinedUsers);
     setClasses(allClasses);
     console.log('Usuários carregados:', combinedUsers);
+
+    // Carregar credenciais do secretário do localStorage
+    const savedSecretaryCredentials = localStorage.getItem('secretary_credentials');
+    if (savedSecretaryCredentials) {
+      setSecretaryCredentials(JSON.parse(savedSecretaryCredentials));
+    }
   }, []);
+
+  const saveSecretaryCredentials = () => {
+    if (!secretaryCredentials.username.trim() || !secretaryCredentials.password.trim()) {
+      toast({
+        title: "Erro",
+        description: "Usuário e senha são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    localStorage.setItem('secretary_credentials', JSON.stringify(secretaryCredentials));
+    setIsEditingSecretary(false);
+    
+    toast({
+      title: "Credenciais atualizadas",
+      description: "As credenciais do secretário foram salvas com sucesso."
+    });
+  };
+
+  const changeUserPassword = (userId: string) => {
+    if (!passwordChange.newPassword.trim()) {
+      toast({
+        title: "Erro",
+        description: "Digite uma nova senha.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const userToUpdate = users.find(u => u.id === userId);
+    if (!userToUpdate) return;
+
+    const updatedUser = {
+      ...userToUpdate,
+      password: passwordChange.newPassword
+    };
+
+    saveUser(updatedUser);
+    if (updatedUser.type === 'professor') {
+      saveProfessor(updatedUser);
+    }
+    
+    setUsers(users.map(u => u.id === userId ? updatedUser : u));
+    setPasswordChange({ userId: '', newPassword: '' });
+    setShowPasswordChange(null);
+    
+    toast({
+      title: "Senha alterada",
+      description: `A senha de ${userToUpdate.name} foi alterada com sucesso.`
+    });
+  };
 
   const createUser = () => {
     if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim() || !newUser.phone.trim()) {
@@ -60,7 +133,6 @@ export const Users = () => {
       return;
     }
 
-    // Verificar se usuário já existe
     if (users.some(u => u.username === newUser.username)) {
       toast({
         title: "Erro no cadastro",
@@ -83,17 +155,12 @@ export const Users = () => {
       createdAt: new Date().toISOString()
     };
 
-    console.log('Criando novo usuário:', user);
-
-    // Salvar no sistema geral
     saveUser(user);
     
-    // Se for professor, salvar também na lista específica de professores
     if (user.type === 'professor') {
       saveProfessor(user);
     }
     
-    // Atualizar classes se necessário
     if (newUser.type === 'professor' && newUser.classIds.length > 0) {
       newUser.classIds.forEach(classId => {
         const classData = classes.find(c => c.id === classId);
@@ -116,8 +183,6 @@ export const Users = () => {
       title: "Professor cadastrado",
       description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}, Senha: ${user.password}`
     });
-
-    console.log('Professor cadastrado com sucesso:', user);
   };
 
   const updateUser = () => {
@@ -132,7 +197,6 @@ export const Users = () => {
       return;
     }
 
-    // Verificar se usuário já existe (exceto o próprio)
     if (users.some(u => u.username === newUser.username && u.id !== editingUser.id)) {
       toast({
         title: "Erro na atualização",
@@ -173,7 +237,6 @@ export const Users = () => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
-    // Remover das classes se for professor
     if (userToDelete.type === 'professor' && userToDelete.classIds) {
       userToDelete.classIds.forEach(classId => {
         const classData = classes.find(c => c.id === classId);
@@ -239,9 +302,85 @@ export const Users = () => {
   return (
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Cadastro de Professores</h1>
-        <p className="text-sm sm:text-base text-gray-600">Gerencie os professores do sistema</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Gerenciamento do Sistema</h1>
+        <p className="text-sm sm:text-base text-gray-600">Gerencie credenciais e professores</p>
       </div>
+
+      {/* Credenciais do Secretário */}
+      <Card className="bg-purple-50 border-purple-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-700 text-base sm:text-lg">
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+            Credenciais do Secretário
+          </CardTitle>
+          <CardDescription className="text-purple-600">
+            Configure o usuário e senha para acesso do secretário
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!isEditingSecretary ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  <strong>Usuário:</strong> {secretaryCredentials.username}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Senha:</strong> {'*'.repeat(secretaryCredentials.password.length)}
+                </p>
+              </div>
+              <Button onClick={() => setIsEditingSecretary(true)} size="sm" variant="outline">
+                <Edit className="w-4 h-4 mr-2" />
+                Alterar Credenciais
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="secretary-username">Usuário</Label>
+                  <Input
+                    id="secretary-username"
+                    placeholder="Digite o usuário"
+                    value={secretaryCredentials.username}
+                    onChange={(e) => setSecretaryCredentials(prev => ({ ...prev, username: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="secretary-password">Senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="secretary-password"
+                      type={showSecretaryPassword ? "text" : "password"}
+                      placeholder="Digite a senha"
+                      value={secretaryCredentials.password}
+                      onChange={(e) => setSecretaryCredentials(prev => ({ ...prev, password: e.target.value }))}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-2"
+                      onClick={() => setShowSecretaryPassword(!showSecretaryPassword)}
+                    >
+                      {showSecretaryPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={saveSecretaryCredentials} size="sm">
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar
+                </Button>
+                <Button onClick={() => setIsEditingSecretary(false)} variant="outline" size="sm">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
@@ -396,6 +535,26 @@ export const Users = () => {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Badge variant="outline" className="text-xs">Professor</Badge>
+                    
+                    {/* Botão para alterar senha */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (showPasswordChange === user.id) {
+                          setShowPasswordChange(null);
+                          setPasswordChange({ userId: '', newPassword: '' });
+                        } else {
+                          setShowPasswordChange(user.id);
+                          setPasswordChange({ userId: user.id, newPassword: '' });
+                        }
+                      }}
+                      className="h-8 w-8"
+                      title="Alterar senha"
+                    >
+                      <Key className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                    
                     <Button
                       variant="ghost"
                       size="icon"
@@ -413,6 +572,37 @@ export const Users = () => {
                       <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
+                  
+                  {/* Campo de alteração de senha */}
+                  {showPasswordChange === user.id && (
+                    <div className="w-full mt-3 pt-3 border-t">
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          placeholder="Nova senha"
+                          value={passwordChange.newPassword}
+                          onChange={(e) => setPasswordChange(prev => ({ ...prev, newPassword: e.target.value }))}
+                          className="text-sm"
+                        />
+                        <Button 
+                          onClick={() => changeUserPassword(user.id)} 
+                          size="sm"
+                        >
+                          <Save className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setShowPasswordChange(null);
+                            setPasswordChange({ userId: '', newPassword: '' });
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
