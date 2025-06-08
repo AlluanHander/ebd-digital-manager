@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getUsers, saveUser, getClasses, saveClass, generateId, saveProfessor, getProfessors } from '@/lib/storage';
+import { getUsers, saveUser, getClasses, saveClass, generateId, deleteUser, getSecretaryCredentials, setSecretaryCredentials } from '@/lib/storage';
 import { User, Class } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,7 +33,7 @@ export const Users = () => {
     classIds: [] as string[]
   });
 
-  const [secretaryCredentials, setSecretaryCredentials] = useState({
+  const [secretaryCredentials, setSecretaryCredentialsState] = useState({
     username: 'admin',
     password: '1234'
   });
@@ -46,30 +44,23 @@ export const Users = () => {
   });
 
   useEffect(() => {
-    const allUsers = getUsers();
-    const professors = getProfessors();
-    const allClasses = getClasses();
-    
-    const combinedUsers = [...allUsers];
-    professors.forEach(prof => {
-      const existingIndex = combinedUsers.findIndex(u => u.id === prof.id || u.username === prof.username);
-      if (existingIndex >= 0) {
-        combinedUsers[existingIndex] = prof;
-      } else {
-        combinedUsers.push(prof);
-      }
-    });
-    
-    setUsers(combinedUsers);
-    setClasses(allClasses);
-    console.log('Usuários carregados:', combinedUsers);
-
-    // Carregar credenciais do secretário do localStorage
-    const savedSecretaryCredentials = localStorage.getItem('secretary_credentials');
-    if (savedSecretaryCredentials) {
-      setSecretaryCredentials(JSON.parse(savedSecretaryCredentials));
-    }
+    loadData();
   }, []);
+
+  const loadData = () => {
+    const allUsers = getUsers();
+    const allClasses = getClasses();
+    const savedSecretaryCredentials = getSecretaryCredentials();
+    
+    setUsers(allUsers);
+    setClasses(allClasses);
+    setSecretaryCredentialsState(savedSecretaryCredentials);
+    
+    console.log('Dados carregados:');
+    console.log('Usuários:', allUsers);
+    console.log('Classes:', allClasses);
+    console.log('Credenciais do secretário:', savedSecretaryCredentials);
+  };
 
   const saveSecretaryCredentials = () => {
     if (!secretaryCredentials.username.trim() || !secretaryCredentials.password.trim()) {
@@ -81,13 +72,15 @@ export const Users = () => {
       return;
     }
 
-    localStorage.setItem('secretary_credentials', JSON.stringify(secretaryCredentials));
+    setSecretaryCredentials(secretaryCredentials);
     setIsEditingSecretary(false);
     
     toast({
       title: "Credenciais atualizadas",
       description: "As credenciais do secretário foram salvas com sucesso."
     });
+    
+    console.log('Credenciais do secretário salvas:', secretaryCredentials);
   };
 
   const changeUserPassword = (userId: string) => {
@@ -109,10 +102,6 @@ export const Users = () => {
     };
 
     saveUser(updatedUser);
-    if (updatedUser.type === 'professor') {
-      saveProfessor(updatedUser);
-    }
-    
     setUsers(users.map(u => u.id === userId ? updatedUser : u));
     setPasswordChange({ userId: '', newPassword: '' });
     setShowPasswordChange(null);
@@ -121,6 +110,8 @@ export const Users = () => {
       title: "Senha alterada",
       description: `A senha de ${userToUpdate.name} foi alterada com sucesso.`
     });
+    
+    console.log('Senha alterada para usuário:', updatedUser);
   };
 
   const createUser = () => {
@@ -156,25 +147,6 @@ export const Users = () => {
     };
 
     saveUser(user);
-    
-    if (user.type === 'professor') {
-      saveProfessor(user);
-    }
-    
-    if (newUser.type === 'professor' && newUser.classIds.length > 0) {
-      newUser.classIds.forEach(classId => {
-        const classData = classes.find(c => c.id === classId);
-        if (classData) {
-          const updatedClass = {
-            ...classData,
-            teacherIds: [...classData.teacherIds, user.id],
-            teacherNames: [...classData.teacherNames, user.name]
-          };
-          saveClass(updatedClass);
-        }
-      });
-    }
-
     setUsers([...users, user]);
     setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
     setIsCreating(false);
@@ -183,6 +155,8 @@ export const Users = () => {
       title: "Professor cadastrado",
       description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}, Senha: ${user.password}`
     });
+    
+    console.log('Novo professor cadastrado:', user);
   };
 
   const updateUser = () => {
@@ -219,10 +193,6 @@ export const Users = () => {
     };
 
     saveUser(updatedUser);
-    if (updatedUser.type === 'professor') {
-      saveProfessor(updatedUser);
-    }
-    
     setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
     setEditingUser(null);
     setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
@@ -231,9 +201,11 @@ export const Users = () => {
       title: "Professor atualizado",
       description: "As informações foram atualizadas com sucesso."
     });
+    
+    console.log('Professor atualizado:', updatedUser);
   };
 
-  const deleteUser = (userId: string) => {
+  const handleDeleteUser = (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
@@ -251,12 +223,15 @@ export const Users = () => {
       });
     }
 
+    deleteUser(userId);
     setUsers(users.filter(u => u.id !== userId));
     
     toast({
       title: "Usuário removido",
       description: `${userToDelete.name} foi removido do sistema.`
     });
+    
+    console.log('Usuário removido:', userToDelete);
   };
 
   const startEdit = (user: User) => {
@@ -278,15 +253,6 @@ export const Users = () => {
     setEditingUser(null);
     setIsCreating(false);
     setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
-  };
-
-  const toggleClassAssignment = (classId: string) => {
-    setNewUser(prev => ({
-      ...prev,
-      classIds: prev.classIds.includes(classId)
-        ? prev.classIds.filter(id => id !== classId)
-        : [...prev.classIds, classId]
-    }));
   };
 
   const getClassNames = (classIds: string[]) => {
@@ -342,7 +308,7 @@ export const Users = () => {
                     id="secretary-username"
                     placeholder="Digite o usuário"
                     value={secretaryCredentials.username}
-                    onChange={(e) => setSecretaryCredentials(prev => ({ ...prev, username: e.target.value }))}
+                    onChange={(e) => setSecretaryCredentialsState(prev => ({ ...prev, username: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -353,7 +319,7 @@ export const Users = () => {
                       type={showSecretaryPassword ? "text" : "password"}
                       placeholder="Digite a senha"
                       value={secretaryCredentials.password}
-                      onChange={(e) => setSecretaryCredentials(prev => ({ ...prev, password: e.target.value }))}
+                      onChange={(e) => setSecretaryCredentialsState(prev => ({ ...prev, password: e.target.value }))}
                       className="pr-10"
                     />
                     <Button
@@ -566,7 +532,7 @@ export const Users = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => deleteUser(user.id)}
+                      onClick={() => handleDeleteUser(user.id)}
                       className="text-red-500 hover:text-red-700 h-8 w-8"
                     >
                       <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />

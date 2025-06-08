@@ -12,8 +12,8 @@ const STORAGE_KEYS = {
   ANNOUNCEMENTS: 'ebd_announcements',
   BIRTHDAYS: 'ebd_birthdays',
   INVENTORY: 'ebd_inventory',
-  PROFESSORS: 'ebd_professors', // Nova chave específica para professores
-  LOGGED_PROFESSOR: 'ebd_logged_professor', // Professor logado
+  SECRETARY_CREDENTIALS: 'secretary_credentials',
+  LOGGED_PROFESSOR: 'ebd_logged_professor',
 };
 
 // Utility functions
@@ -61,37 +61,57 @@ export const removeStorageItem = (key: string): void => {
   }
 };
 
-// Funções específicas para professores
-export const saveProfessor = (professor: User): void => {
-  console.log('Salvando professor:', professor);
-  const professores = getProfessors();
-  const existingIndex = professores.findIndex(p => p.id === professor.id || p.username === professor.username);
-  
-  if (existingIndex >= 0) {
-    professores[existingIndex] = professor;
-  } else {
-    professores.push(professor);
-  }
-  
-  setStorageItem(STORAGE_KEYS.PROFESSORS, professores);
-  console.log('Professores salvos no localStorage:', professores);
+// Credenciais do secretário
+export const getSecretaryCredentials = () => {
+  return getStorageItem<{username: string, password: string}>(STORAGE_KEYS.SECRETARY_CREDENTIALS) || { username: 'admin', password: '1234' };
 };
 
+export const setSecretaryCredentials = (credentials: {username: string, password: string}) => {
+  setStorageItem(STORAGE_KEYS.SECRETARY_CREDENTIALS, credentials);
+};
+
+// User management - FONTE ÚNICA DE VERDADE
+export const getUsers = (): User[] => {
+  return getStorageItem<User[]>(STORAGE_KEYS.USERS) || [];
+};
+
+export const saveUser = (user: User): void => {
+  const users = getUsers();
+  const existingIndex = users.findIndex(u => u.id === user.id || u.username === user.username);
+  
+  if (existingIndex >= 0) {
+    users[existingIndex] = user;
+  } else {
+    users.push(user);
+  }
+  
+  setStorageItem(STORAGE_KEYS.USERS, users);
+  console.log('Usuário salvo:', user);
+  console.log('Todos os usuários:', users);
+};
+
+export const deleteUser = (userId: string): void => {
+  const users = getUsers().filter(u => u.id !== userId);
+  setStorageItem(STORAGE_KEYS.USERS, users);
+  console.log('Usuário removido, usuários restantes:', users);
+};
+
+// Funções específicas para professores - usa a mesma fonte
 export const getProfessors = (): User[] => {
-  const professores = getStorageItem<User[]>(STORAGE_KEYS.PROFESSORS) || [];
-  console.log('Professores carregados do localStorage:', professores);
-  return professores;
+  const allUsers = getUsers();
+  const professors = allUsers.filter(u => u.type === 'professor');
+  console.log('Professores encontrados:', professors);
+  return professors;
 };
 
 export const findProfessorByCredentials = (username: string, password: string): User | null => {
-  const professores = getProfessors();
+  const professors = getProfessors();
   console.log('Procurando professor com credenciais:', { username, password });
-  console.log('Professores disponíveis:', professores);
+  console.log('Professores disponíveis:', professors);
   
-  const professor = professores.find(p => 
+  const professor = professors.find(p => 
     p.username === username && 
-    p.password === password &&
-    p.type === 'professor'
+    p.password === password
   );
   
   console.log('Professor encontrado:', professor);
@@ -112,29 +132,6 @@ export const getLoggedProfessor = (): User | null => {
 export const logoutProfessor = (): void => {
   console.log('Fazendo logout do professor');
   removeStorageItem(STORAGE_KEYS.LOGGED_PROFESSOR);
-};
-
-// User management (mantendo compatibilidade)
-export const getUsers = (): User[] => {
-  return getStorageItem<User[]>(STORAGE_KEYS.USERS) || [];
-};
-
-export const saveUser = (user: User): void => {
-  const users = getUsers();
-  const existingIndex = users.findIndex(u => u.id === user.id);
-  
-  if (existingIndex >= 0) {
-    users[existingIndex] = user;
-  } else {
-    users.push(user);
-  }
-  
-  setStorageItem(STORAGE_KEYS.USERS, users);
-  
-  // Se for professor, salvar também na lista específica de professores
-  if (user.type === 'professor') {
-    saveProfessor(user);
-  }
 };
 
 export const getCurrentUser = (): User | null => {

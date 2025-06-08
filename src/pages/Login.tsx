@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { findProfessorByCredentials, setLoggedProfessor } from '@/lib/storage';
+import { findProfessorByCredentials, setLoggedProfessor, getSecretaryCredentials } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Church, User, Lock, UserCheck, GraduationCap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
@@ -24,10 +23,9 @@ export const Login = () => {
 
   useEffect(() => {
     // Carregar credenciais do secretário do localStorage
-    const savedCredentials = localStorage.getItem('secretary_credentials');
-    if (savedCredentials) {
-      setSecretaryCredentials(JSON.parse(savedCredentials));
-    }
+    const savedCredentials = getSecretaryCredentials();
+    setSecretaryCredentials(savedCredentials);
+    console.log('Credenciais do secretário carregadas:', savedCredentials);
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -36,6 +34,9 @@ export const Login = () => {
 
     try {
       if (userType === 'secretario') {
+        console.log('Tentativa de login do secretário:', { username, password });
+        console.log('Credenciais corretas:', secretaryCredentials);
+        
         // Verificar com as credenciais salvas do secretário
         if (username === secretaryCredentials.username && password === secretaryCredentials.password) {
           // Criar um usuário secretário mockado
@@ -68,7 +69,7 @@ export const Login = () => {
           });
         }
       } else {
-        // Login do professor - verificar usando a nova função
+        // Login do professor - verificar usando a função atualizada
         console.log('Tentando login do professor com:', { username, password });
         
         const professor = findProfessorByCredentials(username, password);
