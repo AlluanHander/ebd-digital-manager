@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { getUsers, getChurchName, setChurchName, getSavedCredentials, setSavedCredentials, clearSavedCredentials } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Church, User, Lock, UserCheck } from 'lucide-react';
+import { Church, User, Lock, UserCheck, Eye, EyeOff } from 'lucide-react';
 
 export const Login = () => {
   const [username, setUsername] = useState('');
@@ -18,6 +18,7 @@ export const Login = () => {
   const [userType, setUserType] = useState<'professor' | 'secretario'>('professor');
   const [churchName, setChurchNameState] = useState('');
   const [saveCredentials, setSaveCredentialsState] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
@@ -48,23 +49,24 @@ export const Login = () => {
         setChurchName(churchName.trim());
       }
 
-      // Find user by username or email (for compatibility)
+      // Find user by username and verify password
       const users = getUsers();
       const user = users.find(u => 
-        (u.email === username || u.name === username) && 
+        u.username === username && 
+        u.password === password &&
         u.type === userType
       );
 
       if (!user) {
         toast({
           title: "Erro no login",
-          description: "Usuário não encontrado. Verifique os dados ou cadastre-se.",
+          description: "Usuário ou senha incorretos. Verifique os dados e tente novamente.",
           variant: "destructive",
         });
         return;
       }
 
-      // Save credentials if requested (using email field for compatibility)
+      // Save credentials if requested
       if (saveCredentials) {
         setSavedCredentials(username, password);
       } else {
@@ -94,7 +96,7 @@ export const Login = () => {
   const handleForgotPassword = () => {
     toast({
       title: "Recuperação de senha",
-      description: "Entre em contato com ebdvilaelida2024@gmail.com para recuperar sua senha.",
+      description: "Entre em contato com o secretário da sua igreja para recuperar sua senha.",
     });
   };
 
@@ -155,14 +157,14 @@ export const Login = () => {
               {/* Username */}
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                  Nome do usuário
+                  Usuário
                 </Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Digite seu nome de usuário"
+                    placeholder="Digite seu usuário (ex: joao123)"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
@@ -180,13 +182,22 @@ export const Login = () => {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Digite sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
                 </div>
               </div>
 
@@ -198,7 +209,7 @@ export const Login = () => {
                   onCheckedChange={(checked) => setSaveCredentialsState(!!checked)}
                 />
                 <Label htmlFor="save-credentials" className="text-sm text-gray-600 cursor-pointer">
-                  Salvar credenciais
+                  Lembrar credenciais
                 </Label>
               </div>
 
@@ -241,6 +252,13 @@ export const Login = () => {
                   Cadastre-se
                 </Button>
               </div>
+            </div>
+
+            {/* Exemplo de credenciais para desenvolvimento */}
+            <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+              <p className="font-medium mb-1">💡 Exemplo de credenciais:</p>
+              <p>• Usuário: admin123, Senha: 123456 (Secretário)</p>
+              <p>• Usuário: joao123, Senha: 123456 (Professor)</p>
             </div>
           </CardContent>
         </Card>
