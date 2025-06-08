@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { getUsers, saveUser, getClasses, saveClass, generateId } from '@/lib/storage';
 import { User, Class } from '@/types';
@@ -358,26 +359,27 @@ export const Users = () => {
                 </Select>
               </div>
             
-            {/* Atribuição de Classes (apenas para professores) */}
-            {newUser.type === 'professor' && classes.length > 0 && (
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Atribuir Classes</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {classes.map(classData => (
-                    <div key={classData.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`class-${classData.id}`}
-                        checked={newUser.classIds.includes(classData.id)}
-                        onCheckedChange={() => toggleClassAssignment(classData.id)}
-                      />
-                      <Label htmlFor={`class-${classData.id}`} className="text-xs sm:text-sm">
-                        {classData.name}
-                      </Label>
-                    </div>
-                  ))}
+              {/* Atribuição de Classes (apenas para professores) */}
+              {newUser.type === 'professor' && classes.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Atribuir Classes</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {classes.map(classData => (
+                      <div key={classData.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`class-${classData.id}`}
+                          checked={newUser.classIds.includes(classData.id)}
+                          onCheckedChange={() => toggleClassAssignment(classData.id)}
+                        />
+                        <Label htmlFor={`class-${classData.id}`} className="text-xs sm:text-sm">
+                          {classData.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
             
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button onClick={editingUser ? updateUser : createUser} className="flex items-center gap-2" size="sm">
