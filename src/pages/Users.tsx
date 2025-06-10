@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUsers, saveUser, getClasses, saveClass, generateId, deleteUser, getSecretaryCredentials, setSecretaryCredentials } from '@/lib/storage';
+import { getUsers, saveUser, getClasses, saveClass, generateId, deleteUser, getSecretaryCredentials, setSecretaryCredentials } from '@/lib/supabase-storage';
 import { User, Class } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,15 @@ import { Badge } from '@/components/ui/badge';
 import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useRealtimeUsers, useRealtimeClasses, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 
 export const Users = () => {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const { users, loading: usersLoading } = useRealtimeUsers();
+  const { classes, loading: classesLoading } = useRealtimeClasses();
+  const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
+  
   const [isCreating, setIsCreating] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +36,7 @@ export const Users = () => {
     classIds: [] as string[]
   });
 
-  const [secretaryCredentials, setSecretaryCredentialsState] = useState({
+  const [localSecretaryCredentials, setLocalSecretaryCredentials] = useState({
     username: 'admin',
     password: '1234'
   });
@@ -44,26 +47,13 @@ export const Users = () => {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (secretaryCredentials) {
+      setLocalSecretaryCredentials(secretaryCredentials);
+    }
+  }, [secretaryCredentials]);
 
-  const loadData = () => {
-    const allUsers = getUsers();
-    const allClasses = getClasses();
-    const savedSecretaryCredentials = getSecretaryCredentials();
-    
-    setUsers(allUsers);
-    setClasses(allClasses);
-    setSecretaryCredentialsState(savedSecretaryCredentials);
-    
-    console.log('Dados carregados:');
-    console.log('Usuários:', allUsers);
-    console.log('Classes:', allClasses);
-    console.log('Credenciais do secretário:', savedSecretaryCredentials);
-  };
-
-  const saveSecretaryCredentials = () => {
-    if (!secretaryCredentials.username.trim() || !secretaryCredentials.password.trim()) {
+  const saveSecretaryCredentials = async () => {
+    if (!localSecretaryCredentials.username.trim() || !localSecretaryCredentials.password.trim()) {
       toast({
         title: "Erro",
         description: "Usuário e senha são obrigatórios.",
@@ -72,18 +62,27 @@ export const Users = () => {
       return;
     }
 
-    setSecretaryCredentials(secretaryCredentials);
-    setIsEditingSecretary(false);
-    
-    toast({
-      title: "Credenciais atualizadas",
-      description: "As credenciais do secretário foram salvas com sucesso."
-    });
-    
-    console.log('Credenciais do secretário salvas:', secretaryCredentials);
+    try {
+      await setSecretaryCredentials(localSecretaryCredentials);
+      setIsEditingSecretary(false);
+      
+      toast({
+        title: "Credenciais atualizadas",
+        description: "As credenciais do secretário foram salvas com sucesso."
+      });
+      
+      console.log('Credenciais do secretário salvas:', localSecretaryCredentials);
+    } catch (error) {
+      console.error('Erro ao salvar credenciais:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar credenciais do secretário.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const changeUserPassword = (userId: string) => {
+  const changeUserPassword = async (userId: string) => {
     if (!passwordChange.newPassword.trim()) {
       toast({
         title: "Erro",
@@ -101,20 +100,28 @@ export const Users = () => {
       password: passwordChange.newPassword
     };
 
-    saveUser(updatedUser);
-    setUsers(users.map(u => u.id === userId ? updatedUser : u));
-    setPasswordChange({ userId: '', newPassword: '' });
-    setShowPasswordChange(null);
-    
-    toast({
-      title: "Senha alterada",
-      description: `A senha de ${userToUpdate.name} foi alterada com sucesso.`
-    });
-    
-    console.log('Senha alterada para usuário:', updatedUser);
+    try {
+      await saveUser(updatedUser);
+      setPasswordChange({ userId: '', newPassword: '' });
+      setShowPasswordChange(null);
+      
+      toast({
+        title: "Senha alterada",
+        description: `A senha de ${userToUpdate.name} foi alterada com sucesso.`
+      });
+      
+      console.log('Senha alterada para usuário:', updatedUser);
+    } catch (error) {
+      console.error('Erro ao alterar senha:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao alterar senha do usuário.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const createUser = () => {
+  const createUser = async () => {
     if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim() || !newUser.phone.trim()) {
       toast({
         title: "Erro no cadastro",
@@ -146,20 +153,28 @@ export const Users = () => {
       createdAt: new Date().toISOString()
     };
 
-    saveUser(user);
-    setUsers([...users, user]);
-    setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
-    setIsCreating(false);
-    
-    toast({
-      title: "Professor cadastrado",
-      description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}, Senha: ${user.password}`
-    });
-    
-    console.log('Novo professor cadastrado:', user);
+    try {
+      await saveUser(user);
+      setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
+      setIsCreating(false);
+      
+      toast({
+        title: "Professor cadastrado",
+        description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}, Senha: ${user.password}. Agora ele pode fazer login em qualquer dispositivo!`
+      });
+      
+      console.log('Novo professor cadastrado no Supabase:', user);
+    } catch (error) {
+      console.error('Erro ao cadastrar professor:', error);
+      toast({
+        title: "Erro no cadastro",
+        description: "Erro ao cadastrar professor no banco de dados.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const updateUser = () => {
+  const updateUser = async () => {
     if (!editingUser) return;
 
     if (!newUser.name.trim() || !newUser.username.trim() || !newUser.phone.trim()) {
@@ -192,25 +207,33 @@ export const Users = () => {
       classIds: newUser.classIds
     };
 
-    saveUser(updatedUser);
-    setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-    setEditingUser(null);
-    setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
-    
-    toast({
-      title: "Professor atualizado",
-      description: "As informações foram atualizadas com sucesso."
-    });
-    
-    console.log('Professor atualizado:', updatedUser);
+    try {
+      await saveUser(updatedUser);
+      setEditingUser(null);
+      setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
+      
+      toast({
+        title: "Professor atualizado",
+        description: "As informações foram atualizadas com sucesso."
+      });
+      
+      console.log('Professor atualizado no Supabase:', updatedUser);
+    } catch (error) {
+      console.error('Erro ao atualizar professor:', error);
+      toast({
+        title: "Erro na atualização",
+        description: "Erro ao atualizar professor no banco de dados.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
     if (userToDelete.type === 'professor' && userToDelete.classIds) {
-      userToDelete.classIds.forEach(classId => {
+      userToDelete.classIds.forEach(async (classId) => {
         const classData = classes.find(c => c.id === classId);
         if (classData) {
           const updatedClass = {
@@ -218,20 +241,28 @@ export const Users = () => {
             teacherIds: classData.teacherIds.filter(id => id !== userId),
             teacherNames: classData.teacherNames.filter((_, index) => classData.teacherIds[index] !== userId)
           };
-          saveClass(updatedClass);
+          await saveClass(updatedClass);
         }
       });
     }
 
-    deleteUser(userId);
-    setUsers(users.filter(u => u.id !== userId));
-    
-    toast({
-      title: "Usuário removido",
-      description: `${userToDelete.name} foi removido do sistema.`
-    });
-    
-    console.log('Usuário removido:', userToDelete);
+    try {
+      await deleteUser(userId);
+      
+      toast({
+        title: "Usuário removido",
+        description: `${userToDelete.name} foi removido do sistema.`
+      });
+      
+      console.log('Usuário removido do Supabase:', userToDelete);
+    } catch (error) {
+      console.error('Erro ao remover usuário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover usuário do banco de dados.",
+        variant: "destructive"
+      });
+    }
   };
 
   const startEdit = (user: User) => {
@@ -265,11 +296,22 @@ export const Users = () => {
   const professorUsers = users.filter(u => u.type === 'professor');
   const secretaryUsers = users.filter(u => u.type === 'secretario');
 
+  if (usersLoading || classesLoading || settingsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando dados em tempo real...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Gerenciamento do Sistema</h1>
-        <p className="text-sm sm:text-base text-gray-600">Gerencie credenciais e professores</p>
+        <p className="text-sm sm:text-base text-gray-600">Gerencie credenciais e professores (sincronizado em tempo real)</p>
       </div>
 
       {/* Credenciais do Secretário */}
@@ -288,10 +330,10 @@ export const Users = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="space-y-2">
                 <p className="text-sm text-gray-600">
-                  <strong>Usuário:</strong> {secretaryCredentials.username}
+                  <strong>Usuário:</strong> {localSecretaryCredentials.username}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <strong>Senha:</strong> {'*'.repeat(secretaryCredentials.password.length)}
+                  <strong>Senha:</strong> {'*'.repeat(localSecretaryCredentials.password.length)}
                 </p>
               </div>
               <Button onClick={() => setIsEditingSecretary(true)} size="sm" variant="outline">
@@ -307,8 +349,8 @@ export const Users = () => {
                   <Input
                     id="secretary-username"
                     placeholder="Digite o usuário"
-                    value={secretaryCredentials.username}
-                    onChange={(e) => setSecretaryCredentialsState(prev => ({ ...prev, username: e.target.value }))}
+                    value={localSecretaryCredentials.username}
+                    onChange={(e) => setLocalSecretaryCredentials(prev => ({ ...prev, username: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -318,8 +360,8 @@ export const Users = () => {
                       id="secretary-password"
                       type={showSecretaryPassword ? "text" : "password"}
                       placeholder="Digite a senha"
-                      value={secretaryCredentials.password}
-                      onChange={(e) => setSecretaryCredentialsState(prev => ({ ...prev, password: e.target.value }))}
+                      value={localSecretaryCredentials.password}
+                      onChange={(e) => setLocalSecretaryCredentials(prev => ({ ...prev, password: e.target.value }))}
                       className="pr-10"
                     />
                     <Button
@@ -484,7 +526,7 @@ export const Users = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-base sm:text-lg">Professores Cadastrados</CardTitle>
-          <CardDescription className="text-sm">Lista de todos os professores do sistema</CardDescription>
+          <CardDescription className="text-sm">Lista sincronizada em tempo real - professores podem fazer login em qualquer dispositivo</CardDescription>
         </CardHeader>
         <CardContent>
           {professorUsers.length > 0 ? (
@@ -497,6 +539,7 @@ export const Users = () => {
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Senha: {user.password}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Telefone: {user.phone}</p>
+                      <p className="text-xs sm:text-sm text-green-600 font-medium">✅ Pode fazer login em qualquer dispositivo</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

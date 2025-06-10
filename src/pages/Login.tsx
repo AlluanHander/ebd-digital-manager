@@ -6,22 +6,37 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { findProfessorByCredentials, setLoggedProfessor } from '@/lib/storage';
+import { findProfessorByCredentials, setLoggedProfessor, getSecretaryCredentials } from '@/lib/supabase-storage';
 import { useToast } from '@/hooks/use-toast';
 import { Church, User, Lock, UserCheck, GraduationCap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 
 export const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [secretaryCredentials, setSecretaryCredentials] = useState({ username: 'admin', password: '1234' });
+  const [settingsLoading, setSettingsLoading] = useState(true);
   
   const { userType } = useParams<{ userType: 'secretario' | 'professor' }>();
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
+
+  useEffect(() => {
+    const loadSecretaryCredentials = async () => {
+      try {
+        const credentials = await getSecretaryCredentials();
+        setSecretaryCredentials(credentials);
+      } catch (error) {
+        console.error('Erro ao carregar credenciais do secretário:', error);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    loadSecretaryCredentials();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +79,7 @@ export const Login = () => {
       } else {
         console.log('Tentando login do professor com:', { username, password });
         
+        // Usar função do Supabase em vez do localStorage
         const professor = await findProfessorByCredentials(username, password);
 
         if (!professor) {
@@ -77,6 +93,7 @@ export const Login = () => {
 
         console.log('Login do professor bem-sucedido:', professor);
 
+        // Salvar professor logado no localStorage para sessão local
         setLoggedProfessor(professor);
         login(professor);
         
@@ -227,6 +244,7 @@ export const Login = () => {
                 <p className="font-medium mb-1">📝 Para professores:</p>
                 <p>• Use o usuário e senha criados pelo secretário</p>
                 <p>• Se não conseguir entrar, peça ao secretário para verificar seus dados</p>
+                <p className="text-xs text-gray-400 mt-1">Os dados são sincronizados em tempo real entre dispositivos</p>
               </div>
             )}
           </CardContent>
