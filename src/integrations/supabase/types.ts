@@ -9,7 +9,338 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      announcements: {
+        Row: {
+          author_name: string | null
+          author_type: string | null
+          class_id: string | null
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          title: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_type?: string | null
+          class_id?: string | null
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          title: string
+        }
+        Update: {
+          author_name?: string | null
+          author_type?: string | null
+          class_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_records: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          date: string
+          id: string
+          present: boolean
+          quarter: string
+          student_id: string | null
+          week: number
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          present: boolean
+          quarter: string
+          student_id?: string | null
+          week: number
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          present?: boolean
+          quarter?: string
+          student_id?: string | null
+          week?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      birthdays: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          date: string
+          day: number
+          id: string
+          month: number
+          student_id: string | null
+          student_name: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          date: string
+          day: number
+          id?: string
+          month: number
+          student_id?: string | null
+          student_name: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          date?: string
+          day?: number
+          id?: string
+          month?: number
+          student_id?: string | null
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "birthdays_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "birthdays_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          teacher_ids: string[] | null
+          teacher_names: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          teacher_ids?: string[] | null
+          teacher_names?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          teacher_ids?: string[] | null
+          teacher_names?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          bibles: number
+          class_id: string | null
+          id: string
+          last_updated: string
+          magazines: number
+          offerings: number
+          quarter: string
+        }
+        Insert: {
+          bibles?: number
+          class_id?: string | null
+          id?: string
+          last_updated?: string
+          magazines?: number
+          offerings?: number
+          quarter: string
+        }
+        Update: {
+          bibles?: number
+          class_id?: string | null
+          id?: string
+          last_updated?: string
+          magazines?: number
+          offerings?: number
+          quarter?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          birthday: string | null
+          class_id: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          birthday?: string | null
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          birthday?: string | null
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_settings: {
+        Row: {
+          church_name: string | null
+          created_at: string
+          id: string
+          secretary_password: string
+          secretary_username: string
+          updated_at: string
+        }
+        Insert: {
+          church_name?: string | null
+          created_at?: string
+          id?: string
+          secretary_password?: string
+          secretary_username?: string
+          updated_at?: string
+        }
+        Update: {
+          church_name?: string | null
+          created_at?: string
+          id?: string
+          secretary_password?: string
+          secretary_username?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          church_name: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          password: string
+          phone: string
+          type: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          church_name: string
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          password: string
+          phone: string
+          type: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          church_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          password?: string
+          phone?: string
+          type?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      visitors: {
+        Row: {
+          class_id: string | null
+          created_at: string
+          id: string
+          name: string
+          visit_date: string
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          visit_date: string
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          visit_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitors_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

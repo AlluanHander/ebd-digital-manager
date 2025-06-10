@@ -1,19 +1,11 @@
-
 import { User, Class, Student, Visitor, Announcement, Birthday, AttendanceRecord, Inventory } from '@/types';
 
+// Re-export everything from supabase-storage for compatibility
+export * from './supabase-storage';
+
+// Keep existing localStorage functions for backward compatibility
 const STORAGE_KEYS = {
-  USERS: 'ebd_users',
-  CLASSES: 'ebd_classes',
-  CURRENT_USER: 'ebd_current_user',
-  CHURCH_NAME: 'ebd_church_name',
   SAVED_CREDENTIALS: 'ebd_saved_credentials',
-  ATTENDANCE: 'ebd_attendance',
-  VISITORS: 'ebd_visitors',
-  ANNOUNCEMENTS: 'ebd_announcements',
-  BIRTHDAYS: 'ebd_birthdays',
-  INVENTORY: 'ebd_inventory',
-  SECRETARY_CREDENTIALS: 'secretary_credentials',
-  LOGGED_PROFESSOR: 'ebd_logged_professor',
 };
 
 // Utility functions
@@ -202,13 +194,27 @@ export const getAttendanceRecords = (): AttendanceRecord[] => {
 
 // Saved credentials
 export const getSavedCredentials = () => {
-  return getStorageItem<{email: string, password: string}>(STORAGE_KEYS.SAVED_CREDENTIALS);
+  try {
+    const item = localStorage.getItem(STORAGE_KEYS.SAVED_CREDENTIALS);
+    return item ? JSON.parse(item) : null;
+  } catch (error) {
+    console.error('Error getting saved credentials:', error);
+    return null;
+  }
 };
 
 export const setSavedCredentials = (email: string, password: string) => {
-  setStorageItem(STORAGE_KEYS.SAVED_CREDENTIALS, {email, password});
+  try {
+    localStorage.setItem(STORAGE_KEYS.SAVED_CREDENTIALS, JSON.stringify({email, password}));
+  } catch (error) {
+    console.error('Error setting saved credentials:', error);
+  }
 };
 
 export const clearSavedCredentials = () => {
-  removeStorageItem(STORAGE_KEYS.SAVED_CREDENTIALS);
+  try {
+    localStorage.removeItem(STORAGE_KEYS.SAVED_CREDENTIALS);
+  } catch (error) {
+    console.error('Error clearing saved credentials:', error);
+  }
 };

@@ -6,38 +6,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap, Phone, User, LogOut, BookOpen, Users, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getLoggedProfessor, logoutProfessor, getClasses } from '@/lib/storage';
-import { Class } from '@/types';
+import { getLoggedProfessor, logoutProfessor } from '@/lib/storage';
+import { useRealtimeClasses } from '@/hooks/useRealtimeData';
+import { User as UserType } from '@/types';
 
 export const ProfessorPanel = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [professor, setProfessor] = useState(user);
-  const [professorClasses, setProfessorClasses] = useState<Class[]>([]);
+  const [professor, setProfessor] = useState<UserType | null>(user);
+  const { classes: allClasses, loading: classesLoading } = useRealtimeClasses();
 
   useEffect(() => {
-    // Verificar se há um professor logado no localStorage
     const loggedProfessor = getLoggedProfessor();
     console.log('Professor logado encontrado no localStorage:', loggedProfessor);
     
     if (loggedProfessor) {
       setProfessor(loggedProfessor);
-      loadProfessorClasses(loggedProfessor.id);
     } else if (!user || user.type !== 'professor') {
       console.log('Nenhum professor logado encontrado, redirecionando...');
       navigate('/');
-    } else if (user.type === 'professor') {
-      loadProfessorClasses(user.id);
     }
   }, [user, navigate]);
-
-  const loadProfessorClasses = (professorId: string) => {
-    const allClasses = getClasses();
-    const myClasses = allClasses.filter(c => c.teacherIds.includes(professorId));
-    setProfessorClasses(myClasses);
-    console.log('Classes do professor carregadas:', myClasses);
-  };
 
   const handleLogout = () => {
     logout();
@@ -56,6 +46,22 @@ export const ProfessorPanel = () => {
     return null;
   }
 
+  // Filter classes for this professor
+  const professorClasses = allClasses.filter(c => 
+    c.teacherIds.includes(currentProfessor.id)
+  );
+
+  if (classesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando dados em tempo real...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -67,7 +73,7 @@ export const ProfessorPanel = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Bem-vindo, {currentProfessor.name}
           </h1>
-          <p className="text-gray-600 mt-2">Painel do Professor</p>
+          <p className="text-gray-600 mt-2">Painel do Professor - Sincronizado em tempo real</p>
         </div>
 
         {/* Informações do Professor */}

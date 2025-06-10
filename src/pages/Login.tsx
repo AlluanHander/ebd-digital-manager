@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -5,28 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { findProfessorByCredentials, setLoggedProfessor, getSecretaryCredentials } from '@/lib/storage';
+import { findProfessorByCredentials, setLoggedProfessor } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Church, User, Lock, UserCheck, GraduationCap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 
 export const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [secretaryCredentials, setSecretaryCredentials] = useState({ username: 'admin', password: '1234' });
   
   const { userType } = useParams<{ userType: 'secretario' | 'professor' }>();
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Carregar credenciais do secretário do localStorage
-    const savedCredentials = getSecretaryCredentials();
-    setSecretaryCredentials(savedCredentials);
-    console.log('Credenciais do secretário carregadas:', savedCredentials);
-  }, []);
+  const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,9 +32,7 @@ export const Login = () => {
         console.log('Tentativa de login do secretário:', { username, password });
         console.log('Credenciais corretas:', secretaryCredentials);
         
-        // Verificar com as credenciais salvas do secretário
         if (username === secretaryCredentials.username && password === secretaryCredentials.password) {
-          // Criar um usuário secretário mockado
           const secretaryUser = {
             id: 'secretary-1',
             name: 'Administrador',
@@ -69,10 +62,9 @@ export const Login = () => {
           });
         }
       } else {
-        // Login do professor - verificar usando a função atualizada
         console.log('Tentando login do professor com:', { username, password });
         
-        const professor = findProfessorByCredentials(username, password);
+        const professor = await findProfessorByCredentials(username, password);
 
         if (!professor) {
           toast({
@@ -85,7 +77,6 @@ export const Login = () => {
 
         console.log('Login do professor bem-sucedido:', professor);
 
-        // Salvar professor logado
         setLoggedProfessor(professor);
         login(professor);
         
@@ -115,6 +106,17 @@ export const Login = () => {
   const getIcon = () => {
     return userType === 'secretario' ? <UserCheck className="w-8 h-8 text-white" /> : <GraduationCap className="w-8 h-8 text-white" />;
   };
+
+  if (settingsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando configurações...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
@@ -147,7 +149,6 @@ export const Login = () => {
 
           <CardContent className="space-y-6">
             <form onSubmit={handleLogin} className="space-y-4">
-              {/* Username */}
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-sm font-medium text-gray-700">
                   Usuário
@@ -166,7 +167,6 @@ export const Login = () => {
                 </div>
               </div>
 
-              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                   Senha
@@ -194,7 +194,6 @@ export const Login = () => {
                 </div>
               </div>
 
-              {/* Login Button */}
               <Button 
                 type="submit" 
                 className="w-full bg-ebd-gradient hover:opacity-90 text-white font-medium py-2.5 transition-all hover-lift"
