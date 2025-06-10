@@ -109,8 +109,16 @@ export const getUsers = async (): Promise<User[]> => {
     }
     
     return data.map(user => ({
-      ...user,
-      classIds: [] // Will be populated from classes table
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      password: user.password,
+      phone: user.phone,
+      type: user.type as 'professor' | 'secretario',
+      churchName: user.church_name,
+      classIds: [],
+      createdAt: user.created_at
     }));
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -175,8 +183,16 @@ export const getProfessors = async (): Promise<User[]> => {
     }
     
     return data.map(user => ({
-      ...user,
-      classIds: []
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      password: user.password,
+      phone: user.phone,
+      type: user.type as 'professor' | 'secretario',
+      churchName: user.church_name,
+      classIds: [],
+      createdAt: user.created_at
     }));
   } catch (error) {
     console.error('Error fetching professors:', error);
@@ -200,8 +216,16 @@ export const findProfessorByCredentials = async (username: string, password: str
     }
     
     return {
-      ...data,
-      classIds: []
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      username: data.username,
+      password: data.password,
+      phone: data.phone,
+      type: data.type as 'professor' | 'secretario',
+      churchName: data.church_name,
+      classIds: [],
+      createdAt: data.created_at
     };
   } catch (error) {
     console.error('Error finding professor:', error);
@@ -234,11 +258,50 @@ export const getClasses = async (): Promise<Class[]> => {
       name: classData.name,
       teacherIds: classData.teacher_ids || [],
       teacherNames: classData.teacher_names || [],
-      students: classData.students || [],
-      visitors: classData.visitors || [],
-      announcements: classData.announcements || [],
-      birthdays: classData.birthdays || [],
-      inventory: classData.inventory?.[0] || {
+      students: (classData.students || []).map((student: any) => ({
+        id: student.id,
+        name: student.name,
+        classId: student.class_id,
+        birthday: student.birthday,
+        attendance: [],
+        createdAt: student.created_at
+      })),
+      visitors: (classData.visitors || []).map((visitor: any) => ({
+        id: visitor.id,
+        name: visitor.name,
+        classId: visitor.class_id,
+        visitDate: visitor.visit_date,
+        createdAt: visitor.created_at
+      })),
+      announcements: (classData.announcements || []).map((announcement: any) => ({
+        id: announcement.id,
+        title: announcement.title,
+        content: announcement.content,
+        classId: announcement.class_id,
+        createdBy: announcement.created_by,
+        authorName: announcement.author_name,
+        authorType: announcement.author_type as 'professor' | 'secretario',
+        createdAt: announcement.created_at
+      })),
+      birthdays: (classData.birthdays || []).map((birthday: any) => ({
+        id: birthday.id,
+        studentId: birthday.student_id,
+        studentName: birthday.student_name,
+        classId: birthday.class_id,
+        date: birthday.date,
+        month: birthday.month,
+        day: birthday.day,
+        createdAt: birthday.created_at
+      })),
+      inventory: classData.inventory?.[0] ? {
+        id: classData.inventory[0].id,
+        classId: classData.inventory[0].class_id,
+        bibles: classData.inventory[0].bibles,
+        magazines: classData.inventory[0].magazines,
+        offerings: classData.inventory[0].offerings,
+        quarter: classData.inventory[0].quarter,
+        lastUpdated: classData.inventory[0].last_updated
+      } : {
         id: generateId(),
         classId: classData.id,
         bibles: 0,

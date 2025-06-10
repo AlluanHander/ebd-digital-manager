@@ -6,6 +6,13 @@ export * from './supabase-storage';
 // Keep existing localStorage functions for backward compatibility
 const STORAGE_KEYS = {
   SAVED_CREDENTIALS: 'ebd_saved_credentials',
+  SECRETARY_CREDENTIALS: 'ebd_secretary_credentials',
+  USERS: 'ebd_users',
+  LOGGED_PROFESSOR: 'ebd_logged_professor',
+  CURRENT_USER: 'ebd_current_user',
+  CHURCH_NAME: 'ebd_church_name',
+  CLASSES: 'ebd_classes',
+  ATTENDANCE: 'ebd_attendance',
 };
 
 // Utility functions
