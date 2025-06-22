@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getUsers, saveUser, getClasses, saveClass, generateId, deleteUser, getSecretaryCredentials, setSecretaryCredentials } from '@/lib/supabase-storage';
-import { User, Class } from '@/types';
+import { saveUser, generateId, deleteUser, setSecretaryCredentials } from '@/lib/supabase-storage';
+import { User } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useRealtimeUsers, useRealtimeClasses, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
+import { useRealtimeUsers, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 
 export const Users = () => {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  
+  // Use realtime hooks para dados sincronizados
   const { users, loading: usersLoading } = useRealtimeUsers();
-  const { classes, loading: classesLoading } = useRealtimeClasses();
   const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
   
   const [isCreating, setIsCreating] = useState(false);
@@ -68,10 +69,10 @@ export const Users = () => {
       
       toast({
         title: "Credenciais atualizadas",
-        description: "As credenciais do secretário foram salvas com sucesso."
+        description: "As credenciais do secretário foram salvas e sincronizadas em tempo real."
       });
       
-      console.log('Credenciais do secretário salvas:', localSecretaryCredentials);
+      console.log('Credenciais do secretário salvas e sincronizadas:', localSecretaryCredentials);
     } catch (error) {
       console.error('Erro ao salvar credenciais:', error);
       toast({
@@ -107,10 +108,10 @@ export const Users = () => {
       
       toast({
         title: "Senha alterada",
-        description: `A senha de ${userToUpdate.name} foi alterada com sucesso.`
+        description: `A senha de ${userToUpdate.name} foi alterada e sincronizada em tempo real.`
       });
       
-      console.log('Senha alterada para usuário:', updatedUser);
+      console.log('Senha alterada e sincronizada para usuário:', updatedUser);
     } catch (error) {
       console.error('Erro ao alterar senha:', error);
       toast({
@@ -160,10 +161,10 @@ export const Users = () => {
       
       toast({
         title: "Professor cadastrado",
-        description: `${user.name} foi cadastrado com sucesso. Usuário: ${user.username}, Senha: ${user.password}. Agora ele pode fazer login em qualquer dispositivo!`
+        description: `${user.name} foi cadastrado com sucesso! Usuário: ${user.username}, Senha: ${user.password}. Agora ele pode fazer login em qualquer dispositivo em tempo real!`
       });
       
-      console.log('Novo professor cadastrado no Supabase:', user);
+      console.log('Novo professor cadastrado e sincronizado no Supabase:', user);
     } catch (error) {
       console.error('Erro ao cadastrar professor:', error);
       toast({
@@ -214,10 +215,10 @@ export const Users = () => {
       
       toast({
         title: "Professor atualizado",
-        description: "As informações foram atualizadas com sucesso."
+        description: "As informações foram atualizadas e sincronizadas em tempo real."
       });
       
-      console.log('Professor atualizado no Supabase:', updatedUser);
+      console.log('Professor atualizado e sincronizado no Supabase:', updatedUser);
     } catch (error) {
       console.error('Erro ao atualizar professor:', error);
       toast({
@@ -232,29 +233,15 @@ export const Users = () => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
-    if (userToDelete.type === 'professor' && userToDelete.classIds) {
-      userToDelete.classIds.forEach(async (classId) => {
-        const classData = classes.find(c => c.id === classId);
-        if (classData) {
-          const updatedClass = {
-            ...classData,
-            teacherIds: classData.teacherIds.filter(id => id !== userId),
-            teacherNames: classData.teacherNames.filter((_, index) => classData.teacherIds[index] !== userId)
-          };
-          await saveClass(updatedClass);
-        }
-      });
-    }
-
     try {
       await deleteUser(userId);
       
       toast({
         title: "Usuário removido",
-        description: `${userToDelete.name} foi removido do sistema.`
+        description: `${userToDelete.name} foi removido e a mudança foi sincronizada em tempo real.`
       });
       
-      console.log('Usuário removido do Supabase:', userToDelete);
+      console.log('Usuário removido e sincronizado do Supabase:', userToDelete);
     } catch (error) {
       console.error('Erro ao remover usuário:', error);
       toast({
@@ -286,17 +273,10 @@ export const Users = () => {
     setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
   };
 
-  const getClassNames = (classIds: string[]) => {
-    return classIds.map(id => {
-      const classData = classes.find(c => c.id === id);
-      return classData?.name || 'Classe não encontrada';
-    }).join(', ');
-  };
-
   const professorUsers = users.filter(u => u.type === 'professor');
   const secretaryUsers = users.filter(u => u.type === 'secretario');
 
-  if (usersLoading || classesLoading || settingsLoading) {
+  if (usersLoading || settingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -311,7 +291,7 @@ export const Users = () => {
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Gerenciamento do Sistema</h1>
-        <p className="text-sm sm:text-base text-gray-600">Gerencie credenciais e professores (sincronizado em tempo real)</p>
+        <p className="text-sm sm:text-base text-gray-600">Gerencie credenciais e professores (sincronizado em tempo real entre dispositivos)</p>
       </div>
 
       {/* Credenciais do Secretário */}
@@ -319,10 +299,10 @@ export const Users = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-700 text-base sm:text-lg">
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-            Credenciais do Secretário
+            Credenciais do Secretário (Sincronização em Tempo Real)
           </CardTitle>
           <CardDescription className="text-purple-600">
-            Configure o usuário e senha para acesso do secretário
+            Configure o usuário e senha para acesso do secretário - mudanças são aplicadas instantaneamente
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -335,6 +315,7 @@ export const Users = () => {
                 <p className="text-sm text-gray-600">
                   <strong>Senha:</strong> {'*'.repeat(localSecretaryCredentials.password.length)}
                 </p>
+                <p className="text-xs text-green-600 font-medium">✅ Sincronizado em tempo real</p>
               </div>
               <Button onClick={() => setIsEditingSecretary(true)} size="sm" variant="outline">
                 <Edit className="w-4 h-4 mr-2" />
@@ -390,6 +371,7 @@ export const Users = () => {
         </CardContent>
       </Card>
 
+      
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
         <Card className="bg-blue-50 border-blue-200">
@@ -435,7 +417,7 @@ export const Users = () => {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
-              {editingUser ? 'Editar Professor' : 'Novo Professor'}
+              {editingUser ? 'Editar Professor' : 'Novo Professor'} (Sincronização em Tempo Real)
             </CardTitle>
             {!isCreating && (
               <Button onClick={() => setIsCreating(true)} size="sm">
@@ -525,8 +507,8 @@ export const Users = () => {
       {/* Lista de Professores */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Professores Cadastrados</CardTitle>
-          <CardDescription className="text-sm">Lista sincronizada em tempo real - professores podem fazer login em qualquer dispositivo</CardDescription>
+          <CardTitle className="text-base sm:text-lg">Professores Cadastrados (Tempo Real)</CardTitle>
+          <CardDescription className="text-sm">Lista sincronizada em tempo real - professores podem fazer login em qualquer dispositivo instantaneamente</CardDescription>
         </CardHeader>
         <CardContent>
           {professorUsers.length > 0 ? (
@@ -539,7 +521,7 @@ export const Users = () => {
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Senha: {user.password}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Telefone: {user.phone}</p>
-                      <p className="text-xs sm:text-sm text-green-600 font-medium">✅ Pode fazer login em qualquer dispositivo</p>
+                      <p className="text-xs sm:text-sm text-green-600 font-medium">✅ Pode fazer login em qualquer dispositivo (sincronização em tempo real)</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -619,6 +601,7 @@ export const Users = () => {
             <div className="text-center py-6 sm:py-8">
               <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-sm sm:text-base text-gray-500">Nenhum professor cadastrado</p>
+              <p className="text-xs text-gray-400 mt-1">Cadastre professores para que possam fazer login em tempo real</p>
             </div>
           )}
         </CardContent>

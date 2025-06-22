@@ -2,24 +2,35 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Class } from '@/types';
-import { getUsers, getClasses } from '@/lib/storage';
+import { getUsers, getClasses } from '@/lib/supabase-storage';
 
 export const useRealtimeUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load initial data
-    const loadUsers = async () => {
-      const data = await getUsers();
-      setUsers(data);
-      setLoading(false);
+    // Load initial data immediately
+    const loadInitialData = async () => {
+      try {
+        const data = await getUsers();
+        setUsers(data);
+        console.log('Dados iniciais de usuários carregados:', data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error);
+        setLoading(false);
+      }
     };
-    loadUsers();
 
-    // Set up realtime subscription
+    loadInitialData();
+
+    // Set up realtime subscription for users table
     const channel = supabase
-      .channel('users-changes')
+      .channel('public:users', {
+        config: {
+          broadcast: { self: true }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -28,23 +39,39 @@ export const useRealtimeUsers = () => {
           table: 'users'
         },
         async (payload) => {
-          console.log('Users table changed:', payload);
-          // Reload data when changes occur
-          const updatedData = await getUsers();
-          setUsers(updatedData);
+          console.log('Mudança na tabela users detectada:', payload);
+          try {
+            // Reload all users data when any change occurs
+            const updatedData = await getUsers();
+            setUsers(updatedData);
+            console.log('Dados de usuários atualizados:', updatedData);
+          } catch (error) {
+            console.error('Erro ao recarregar dados de usuários:', error);
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Status da subscrição de usuários:', status);
+      });
 
     return () => {
+      console.log('Removendo canal de usuários');
       supabase.removeChannel(channel);
     };
   }, []);
 
-  return { users, loading, refetch: async () => {
-    const data = await getUsers();
-    setUsers(data);
-  }};
+  const refetch = async () => {
+    try {
+      const data = await getUsers();
+      setUsers(data);
+      return data;
+    } catch (error) {
+      console.error('Erro ao refetch usuários:', error);
+      return [];
+    }
+  };
+
+  return { users, loading, refetch };
 };
 
 export const useRealtimeClasses = () => {
@@ -52,17 +79,28 @@ export const useRealtimeClasses = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load initial data
-    const loadClasses = async () => {
-      const data = await getClasses();
-      setClasses(data);
-      setLoading(false);
+    // Load initial data immediately
+    const loadInitialData = async () => {
+      try {
+        const data = await getClasses();
+        setClasses(data);
+        console.log('Dados iniciais de classes carregados:', data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Erro ao carregar dados iniciais de classes:', error);
+        setLoading(false);
+      }
     };
-    loadClasses();
 
-    // Set up realtime subscriptions for all related tables
+    loadInitialData();
+
+    // Set up realtime subscriptions for all class-related tables
     const classesChannel = supabase
-      .channel('classes-changes')
+      .channel('public:classes-all', {
+        config: {
+          broadcast: { self: true }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -71,9 +109,8 @@ export const useRealtimeClasses = () => {
           table: 'classes'
         },
         async (payload) => {
-          console.log('Classes table changed:', payload);
-          const updatedData = await getClasses();
-          setClasses(updatedData);
+          console.log('Mudança na tabela classes:', payload);
+          await reloadClassesData();
         }
       )
       .on(
@@ -84,9 +121,8 @@ export const useRealtimeClasses = () => {
           table: 'students'
         },
         async (payload) => {
-          console.log('Students table changed:', payload);
-          const updatedData = await getClasses();
-          setClasses(updatedData);
+          console.log('Mudança na tabela students:', payload);
+          await reloadClassesData();
         }
       )
       .on(
@@ -97,9 +133,8 @@ export const useRealtimeClasses = () => {
           table: 'visitors'
         },
         async (payload) => {
-          console.log('Visitors table changed:', payload);
-          const updatedData = await getClasses();
-          setClasses(updatedData);
+          console.log('Mudança na tabela visitors:', payload);
+          await reloadClassesData();
         }
       )
       .on(
@@ -110,9 +145,8 @@ export const useRealtimeClasses = () => {
           table: 'announcements'
         },
         async (payload) => {
-          console.log('Announcements table changed:', payload);
-          const updatedData = await getClasses();
-          setClasses(updatedData);
+          console.log('Mudança na tabela announcements:', payload);
+          await reloadClassesData();
         }
       )
       .on(
@@ -123,9 +157,8 @@ export const useRealtimeClasses = () => {
           table: 'birthdays'
         },
         async (payload) => {
-          console.log('Birthdays table changed:', payload);
-          const updatedData = await getClasses();
-          setClasses(updatedData);
+          console.log('Mudança na tabela birthdays:', payload);
+          await reloadClassesData();
         }
       )
       .on(
@@ -136,22 +169,42 @@ export const useRealtimeClasses = () => {
           table: 'inventory'
         },
         async (payload) => {
-          console.log('Inventory table changed:', payload);
-          const updatedData = await getClasses();
-          setClasses(updatedData);
+          console.log('Mudança na tabela inventory:', payload);
+          await reloadClassesData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Status da subscrição de classes:', status);
+      });
+
+    const reloadClassesData = async () => {
+      try {
+        const updatedData = await getClasses();
+        setClasses(updatedData);
+        console.log('Dados de classes atualizados:', updatedData);
+      } catch (error) {
+        console.error('Erro ao recarregar dados de classes:', error);
+      }
+    };
 
     return () => {
+      console.log('Removendo canal de classes');
       supabase.removeChannel(classesChannel);
     };
   }, []);
 
-  return { classes, loading, refetch: async () => {
-    const data = await getClasses();
-    setClasses(data);
-  }};
+  const refetch = async () => {
+    try {
+      const data = await getClasses();
+      setClasses(data);
+      return data;
+    } catch (error) {
+      console.error('Erro ao refetch classes:', error);
+      return [];
+    }
+  };
+
+  return { classes, loading, refetch };
 };
 
 export const useRealtimeSystemSettings = () => {
@@ -160,8 +213,8 @@ export const useRealtimeSystemSettings = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load initial data
-    const loadSettings = async () => {
+    // Load initial data immediately
+    const loadInitialSettings = async () => {
       try {
         const { data, error } = await supabase
           .from('system_settings')
@@ -174,18 +227,24 @@ export const useRealtimeSystemSettings = () => {
             username: data.secretary_username || 'admin',
             password: data.secretary_password || '1234'
           });
+          console.log('Configurações do sistema carregadas:', data);
         }
         setLoading(false);
       } catch (error) {
-        console.error('Error loading system settings:', error);
+        console.error('Erro ao carregar configurações:', error);
         setLoading(false);
       }
     };
-    loadSettings();
 
-    // Set up realtime subscription
+    loadInitialSettings();
+
+    // Set up realtime subscription for system settings
     const channel = supabase
-      .channel('system-settings-changes')
+      .channel('public:system_settings', {
+        config: {
+          broadcast: { self: true }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -194,20 +253,24 @@ export const useRealtimeSystemSettings = () => {
           table: 'system_settings'
         },
         async (payload) => {
-          console.log('System settings changed:', payload);
-          // Reload settings when changes occur
+          console.log('Configurações do sistema mudaram:', payload);
           if (payload.new) {
-            setChurchName((payload.new as any).church_name || '');
+            const newData = payload.new as any;
+            setChurchName(newData.church_name || '');
             setSecretaryCredentials({
-              username: (payload.new as any).secretary_username || 'admin',
-              password: (payload.new as any).secretary_password || '1234'
+              username: newData.secretary_username || 'admin',
+              password: newData.secretary_password || '1234'
             });
+            console.log('Configurações atualizadas em tempo real:', newData);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Status da subscrição de configurações:', status);
+      });
 
     return () => {
+      console.log('Removendo canal de configurações');
       supabase.removeChannel(channel);
     };
   }, []);

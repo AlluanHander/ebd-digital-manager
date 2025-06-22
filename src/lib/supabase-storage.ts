@@ -41,20 +41,53 @@ export const getSecretaryCredentials = async () => {
 
 export const setSecretaryCredentials = async (credentials: {username: string, password: string}) => {
   try {
-    const { error } = await supabase
+    // First, try to get existing settings
+    const { data: existingData, error: selectError } = await supabase
       .from('system_settings')
-      .update({
-        secretary_username: credentials.username,
-        secretary_password: credentials.password,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', (await supabase.from('system_settings').select('id').single()).data?.id);
-    
-    if (error) {
-      console.error('Error updating secretary credentials:', error);
+      .select('id')
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('Error checking existing system settings:', selectError);
+      return;
+    }
+
+    if (existingData) {
+      // Update existing record
+      const { error } = await supabase
+        .from('system_settings')
+        .update({
+          secretary_username: credentials.username,
+          secretary_password: credentials.password,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingData.id);
+      
+      if (error) {
+        console.error('Error updating secretary credentials:', error);
+      } else {
+        console.log('Credenciais do secretário atualizadas:', credentials);
+      }
+    } else {
+      // Insert new record
+      const { error } = await supabase
+        .from('system_settings')
+        .insert({
+          secretary_username: credentials.username,
+          secretary_password: credentials.password,
+          church_name: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error('Error inserting secretary credentials:', error);
+      } else {
+        console.log('Credenciais do secretário inseridas:', credentials);
+      }
     }
   } catch (error) {
-    console.error('Error updating secretary credentials:', error);
+    console.error('Error setting secretary credentials:', error);
   }
 };
 
@@ -79,19 +112,52 @@ export const getChurchName = async (): Promise<string> => {
 
 export const setChurchName = async (name: string): Promise<void> => {
   try {
-    const { error } = await supabase
+    // First, try to get existing settings
+    const { data: existingData, error: selectError } = await supabase
       .from('system_settings')
-      .update({
-        church_name: name,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', (await supabase.from('system_settings').select('id').single()).data?.id);
-    
-    if (error) {
-      console.error('Error updating church name:', error);
+      .select('id')
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('Error checking existing system settings:', selectError);
+      return;
+    }
+
+    if (existingData) {
+      // Update existing record
+      const { error } = await supabase
+        .from('system_settings')
+        .update({
+          church_name: name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingData.id);
+      
+      if (error) {
+        console.error('Error updating church name:', error);
+      } else {
+        console.log('Nome da igreja atualizado:', name);
+      }
+    } else {
+      // Insert new record
+      const { error } = await supabase
+        .from('system_settings')
+        .insert({
+          church_name: name,
+          secretary_username: 'admin',
+          secretary_password: '1234',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error('Error inserting church name:', error);
+      } else {
+        console.log('Nome da igreja inserido:', name);
+      }
     }
   } catch (error) {
-    console.error('Error updating church name:', error);
+    console.error('Error setting church name:', error);
   }
 };
 
@@ -108,7 +174,7 @@ export const getUsers = async (): Promise<User[]> => {
       return [];
     }
     
-    return data.map(user => ({
+    const users = data.map(user => ({
       id: user.id,
       name: user.name,
       email: user.email,
@@ -120,6 +186,9 @@ export const getUsers = async (): Promise<User[]> => {
       classIds: [],
       createdAt: user.created_at
     }));
+
+    console.log('Usuários carregados do Supabase:', users);
+    return users;
   } catch (error) {
     console.error('Error fetching users:', error);
     return [];
@@ -146,11 +215,13 @@ export const saveUser = async (user: User): Promise<void> => {
     
     if (error) {
       console.error('Error saving user:', error);
+      throw error;
     } else {
-      console.log('User saved successfully:', userData);
+      console.log('Usuário salvo com sucesso no Supabase:', userData);
     }
   } catch (error) {
     console.error('Error saving user:', error);
+    throw error;
   }
 };
 
@@ -163,9 +234,13 @@ export const deleteUser = async (userId: string): Promise<void> => {
     
     if (error) {
       console.error('Error deleting user:', error);
+      throw error;
+    } else {
+      console.log('Usuário deletado com sucesso do Supabase:', userId);
     }
   } catch (error) {
     console.error('Error deleting user:', error);
+    throw error;
   }
 };
 
@@ -215,7 +290,7 @@ export const findProfessorByCredentials = async (username: string, password: str
       return null;
     }
     
-    return {
+    const professor = {
       id: data.id,
       name: data.name,
       email: data.email,
@@ -227,6 +302,9 @@ export const findProfessorByCredentials = async (username: string, password: str
       classIds: [],
       createdAt: data.created_at
     };
+
+    console.log('Professor encontrado:', professor);
+    return professor;
   } catch (error) {
     console.error('Error finding professor:', error);
     return null;
@@ -253,7 +331,7 @@ export const getClasses = async (): Promise<Class[]> => {
       return [];
     }
     
-    return data.map(classData => ({
+    const classes = data.map(classData => ({
       id: classData.id,
       name: classData.name,
       teacherIds: classData.teacher_ids || [],
@@ -312,6 +390,9 @@ export const getClasses = async (): Promise<Class[]> => {
       },
       createdAt: classData.created_at
     }));
+
+    console.log('Classes carregadas do Supabase:', classes);
+    return classes;
   } catch (error) {
     console.error('Error fetching classes:', error);
     return [];
@@ -332,9 +413,13 @@ export const saveClass = async (classData: Class): Promise<void> => {
     
     if (error) {
       console.error('Error saving class:', error);
+      throw error;
+    } else {
+      console.log('Classe salva com sucesso no Supabase:', classData);
     }
   } catch (error) {
     console.error('Error saving class:', error);
+    throw error;
   }
 };
 
@@ -347,9 +432,13 @@ export const deleteClass = async (classId: string): Promise<void> => {
     
     if (error) {
       console.error('Error deleting class:', error);
+      throw error;
+    } else {
+      console.log('Classe deletada com sucesso do Supabase:', classId);
     }
   } catch (error) {
     console.error('Error deleting class:', error);
+    throw error;
   }
 };
 
@@ -370,9 +459,11 @@ export const saveAttendance = async (attendance: AttendanceRecord): Promise<void
     
     if (error) {
       console.error('Error saving attendance:', error);
+      throw error;
     }
   } catch (error) {
     console.error('Error saving attendance:', error);
+    throw error;
   }
 };
 

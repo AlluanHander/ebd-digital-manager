@@ -9,34 +9,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { findProfessorByCredentials, setLoggedProfessor, getSecretaryCredentials } from '@/lib/supabase-storage';
 import { useToast } from '@/hooks/use-toast';
 import { Church, User, Lock, UserCheck, GraduationCap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 
 export const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [secretaryCredentials, setSecretaryCredentials] = useState({ username: 'admin', password: '1234' });
-  const [settingsLoading, setSettingsLoading] = useState(true);
   
   const { userType } = useParams<{ userType: 'secretario' | 'professor' }>();
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const loadSecretaryCredentials = async () => {
-      try {
-        const credentials = await getSecretaryCredentials();
-        setSecretaryCredentials(credentials);
-      } catch (error) {
-        console.error('Erro ao carregar credenciais do secretário:', error);
-      } finally {
-        setSettingsLoading(false);
-      }
-    };
-
-    loadSecretaryCredentials();
-  }, []);
+  
+  // Use realtime system settings
+  const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +32,7 @@ export const Login = () => {
     try {
       if (userType === 'secretario') {
         console.log('Tentativa de login do secretário:', { username, password });
-        console.log('Credenciais corretas:', secretaryCredentials);
+        console.log('Credenciais corretas do secretário:', secretaryCredentials);
         
         if (username === secretaryCredentials.username && password === secretaryCredentials.password) {
           const secretaryUser = {
@@ -79,7 +66,7 @@ export const Login = () => {
       } else {
         console.log('Tentando login do professor com:', { username, password });
         
-        // Usar função do Supabase em vez do localStorage
+        // Buscar professor diretamente do Supabase
         const professor = await findProfessorByCredentials(username, password);
 
         if (!professor) {
@@ -99,7 +86,7 @@ export const Login = () => {
         
         toast({
           title: "Login realizado com sucesso!",
-          description: `Bem-vindo(a), ${professor.name}!`,
+          description: `Bem-vindo(a), ${professor.name}! Dados sincronizados em tempo real.`,
         });
 
         navigate('/professor-panel');
@@ -129,7 +116,7 @@ export const Login = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando configurações...</p>
+          <p className="text-gray-600">Carregando configurações em tempo real...</p>
         </div>
       </div>
     );
@@ -158,7 +145,7 @@ export const Login = () => {
               <CardDescription className="text-gray-600 mt-2">
                 {userType === 'secretario' 
                   ? 'Acesse o painel administrativo' 
-                  : 'Acesse seu painel de professor'
+                  : 'Acesse seu painel de professor (sincronizado em tempo real)'
                 }
               </CardDescription>
             </div>
@@ -244,7 +231,7 @@ export const Login = () => {
                 <p className="font-medium mb-1">📝 Para professores:</p>
                 <p>• Use o usuário e senha criados pelo secretário</p>
                 <p>• Se não conseguir entrar, peça ao secretário para verificar seus dados</p>
-                <p className="text-xs text-gray-400 mt-1">Os dados são sincronizados em tempo real entre dispositivos</p>
+                <p className="text-xs text-green-600 font-medium mt-2">✅ Os dados são sincronizados em tempo real entre dispositivos</p>
               </div>
             )}
           </CardContent>
