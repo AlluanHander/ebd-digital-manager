@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getUsers, saveUser, getClasses, saveClass, generateId, getChurchName, setChurchName } from '@/lib/storage';
+import { getUsers, saveUser, getClasses, saveClass, generateId, getChurchName, setChurchName } from '@/lib/supabase-storage';
+import { useRealtimeUsers, useRealtimeClasses, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 import { User, Class } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, Church, Users, BookOpen, Trash2, Edit, Save, Plus, Mail, Key, Database, UserPlus } from 'lucide-react';
+import { Settings as SettingsIcon, Church, Users, BookOpen, Trash2, Edit, Save, Plus, Mail, Key, Database, UserPlus, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -30,8 +31,10 @@ import {
 export const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const { users, loading: usersLoading, refetch: refetchUsers } = useRealtimeUsers();
+  const { classes, loading: classesLoading, refetch: refetchClasses } = useRealtimeClasses();
+  const { churchName: realtimeChurchName, loading: settingsLoading } = useRealtimeSystemSettings();
+  
   const [churchNameInput, setChurchNameInput] = useState('');
   const [isEditingChurch, setIsEditingChurch] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -41,26 +44,32 @@ export const Settings = () => {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [isAssigningTeacher, setIsAssigningTeacher] = useState(false);
 
+  // Sync church name from realtime data
   useEffect(() => {
-    const allUsers = getUsers();
-    const allClasses = getClasses();
-    const currentChurchName = getChurchName();
-    
-    setUsers(allUsers);
-    setClasses(allClasses);
-    setChurchNameInput(currentChurchName || '');
-  }, []);
+    if (realtimeChurchName && !settingsLoading) {
+      setChurchNameInput(realtimeChurchName);
+    }
+  }, [realtimeChurchName, settingsLoading]);
 
-  const updateChurchName = () => {
+  const updateChurchName = async () => {
     if (!churchNameInput.trim()) return;
     
-    setChurchName(churchNameInput.trim());
-    setIsEditingChurch(false);
-    
-    toast({
-      title: "Nome da igreja atualizado",
-      description: "O nome da igreja foi atualizado com sucesso."
-    });
+    try {
+      await setChurchName(churchNameInput.trim());
+      setIsEditingChurch(false);
+      
+      toast({
+        title: "Nome da igreja atualizado",
+        description: "O nome da igreja foi atualizado com sucesso."
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar nome da igreja:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar nome da igreja.",
+        variant: "destructive"
+      });
+    }
   };
 
   const resetUserPassword = () => {
@@ -75,156 +84,212 @@ export const Settings = () => {
     setNewPassword('');
   };
 
-  const deleteUser = (userId: string) => {
+  const deleteUser = async (userId: string) => {
     const userToDelete = users.find(u => u.id === userId);
     if (!userToDelete) return;
 
-    if (userToDelete.type === 'professor' && userToDelete.classIds) {
-      userToDelete.classIds.forEach(classId => {
-        const classData = classes.find(c => c.id === classId);
-        if (classData) {
+    try {
+      // Remove professor from classes first
+      if (userToDelete.type === 'professor') {
+        const professorClasses = classes.filter(c => c.teacherIds.includes(userId));
+        
+        for (const classData of professorClasses) {
+          const teacherIndex = classData.teacherIds.indexOf(userId);
           const updatedClass = {
             ...classData,
             teacherIds: classData.teacherIds.filter(id => id !== userId),
-            teacherNames: classData.teacherNames.filter((_, index) => classData.teacherIds[index] !== userId)
+            teacherNames: classData.teacherNames.filter((_, index) => index !== teacherIndex)
           };
-          saveClass(updatedClass);
+          await saveClass(updatedClass);
         }
+      }
+
+      // Delete user
+      await deleteUser(userId);
+      await refetchUsers();
+      await refetchClasses();
+      
+      toast({
+        title: "Usuário removido",
+        description: `${userToDelete.name} foi removido do sistema.`
+      });
+    } catch (error) {
+      console.error('Erro ao deletar usuário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover usuário.",
+        variant: "destructive"
       });
     }
-
-    setUsers(users.filter(u => u.id !== userId));
-    
-    toast({
-      title: "Usuário removido",
-      description: `${userToDelete.name} foi removido do sistema.`
-    });
   };
 
-  const createClass = () => {
+  const createClass = async () => {
     if (!newClassName.trim()) return;
 
-    const newClass: Class = {
-      id: generateId(),
-      name: newClassName.trim(),
-      teacherIds: [],
-      teacherNames: [],
-      students: [],
-      visitors: [],
-      announcements: [],
-      birthdays: [],
-      inventory: {
+    try {
+      const newClass: Class = {
         id: generateId(),
-        classId: generateId(),
-        bibles: 0,
-        magazines: 0,
-        offerings: 0,
-        lastUpdated: new Date().toISOString(),
-        quarter: getCurrentQuarter()
-      },
-      createdAt: new Date().toISOString()
-    };
+        name: newClassName.trim(),
+        teacherIds: [],
+        teacherNames: [],
+        students: [],
+        visitors: [],
+        announcements: [],
+        birthdays: [],
+        inventory: {
+          id: generateId(),
+          classId: generateId(),
+          bibles: 0,
+          magazines: 0,
+          offerings: 0,
+          lastUpdated: new Date().toISOString(),
+          quarter: getCurrentQuarter()
+        },
+        createdAt: new Date().toISOString()
+      };
 
-    saveClass(newClass);
-    setClasses([...classes, newClass]);
-    setNewClassName('');
-    setIsCreatingClass(false);
-    
-    toast({
-      title: "Classe criada",
-      description: `A classe ${newClass.name} foi criada com sucesso.`
-    });
+      await saveClass(newClass);
+      await refetchClasses();
+      setNewClassName('');
+      setIsCreatingClass(false);
+      
+      toast({
+        title: "Classe criada",
+        description: `A classe ${newClass.name} foi criada com sucesso.`
+      });
+    } catch (error) {
+      console.error('Erro ao criar classe:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar classe.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const assignTeacherToClass = (teacherId: string) => {
+  const assignTeacherToClass = async (teacherId: string) => {
     if (!selectedClass || !teacherId) return;
 
     const teacher = users.find(u => u.id === teacherId);
     if (!teacher) return;
 
-    // Atualizar a classe
-    const updatedClass = {
-      ...selectedClass,
-      teacherIds: [...selectedClass.teacherIds, teacherId],
-      teacherNames: [...selectedClass.teacherNames, teacher.name]
-    };
+    try {
+      // Update class with new teacher
+      const updatedClass = {
+        ...selectedClass,
+        teacherIds: [...selectedClass.teacherIds, teacherId],
+        teacherNames: [...selectedClass.teacherNames, teacher.name]
+      };
 
-    // Atualizar o usuário professor
-    const updatedTeacher = {
-      ...teacher,
-      classIds: [...(teacher.classIds || []), selectedClass.id]
-    };
+      // Update teacher with new class
+      const updatedTeacher = {
+        ...teacher,
+        classIds: [...(teacher.classIds || []), selectedClass.id]
+      };
 
-    saveClass(updatedClass);
-    saveUser(updatedTeacher);
-    
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    setUsers(users.map(u => u.id === updatedTeacher.id ? updatedTeacher : u));
-    
-    setIsAssigningTeacher(false);
-    setSelectedClass(null);
-    
-    toast({
-      title: "Professor atribuído",
-      description: `${teacher.name} foi atribuído à classe ${updatedClass.name}.`
-    });
+      await saveClass(updatedClass);
+      await saveUser(updatedTeacher);
+      
+      // Refresh data
+      await refetchClasses();
+      await refetchUsers();
+      
+      setIsAssigningTeacher(false);
+      setSelectedClass(null);
+      
+      toast({
+        title: "Professor atribuído",
+        description: `${teacher.name} foi atribuído à classe ${updatedClass.name}.`
+      });
+    } catch (error) {
+      console.error('Erro ao atribuir professor:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atribuir professor à classe.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const removeTeacherFromClass = (classId: string, teacherId: string) => {
+  const removeTeacherFromClass = async (classId: string, teacherId: string) => {
     const classData = classes.find(c => c.id === classId);
     const teacher = users.find(u => u.id === teacherId);
     
     if (!classData || !teacher) return;
 
-    // Atualizar a classe
-    const teacherIndex = classData.teacherIds.indexOf(teacherId);
-    const updatedClass = {
-      ...classData,
-      teacherIds: classData.teacherIds.filter(id => id !== teacherId),
-      teacherNames: classData.teacherNames.filter((_, index) => index !== teacherIndex)
-    };
+    try {
+      // Update class - remove teacher
+      const teacherIndex = classData.teacherIds.indexOf(teacherId);
+      const updatedClass = {
+        ...classData,
+        teacherIds: classData.teacherIds.filter(id => id !== teacherId),
+        teacherNames: classData.teacherNames.filter((_, index) => index !== teacherIndex)
+      };
 
-    // Atualizar o usuário professor
-    const updatedTeacher = {
-      ...teacher,
-      classIds: (teacher.classIds || []).filter(id => id !== classId)
-    };
+      // Update teacher - remove class
+      const updatedTeacher = {
+        ...teacher,
+        classIds: (teacher.classIds || []).filter(id => id !== classId)
+      };
 
-    saveClass(updatedClass);
-    saveUser(updatedTeacher);
-    
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    setUsers(users.map(u => u.id === updatedTeacher.id ? updatedTeacher : u));
-    
-    toast({
-      title: "Professor removido",
-      description: `${teacher.name} foi removido da classe ${updatedClass.name}.`
-    });
+      await saveClass(updatedClass);
+      await saveUser(updatedTeacher);
+      
+      // Refresh data
+      await refetchClasses();
+      await refetchUsers();
+      
+      toast({
+        title: "Professor removido",
+        description: `${teacher.name} foi removido da classe ${updatedClass.name}.`
+      });
+    } catch (error) {
+      console.error('Erro ao remover professor:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover professor da classe.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteClass = (classId: string) => {
+  const deleteClass = async (classId: string) => {
     const classToDelete = classes.find(c => c.id === classId);
     if (!classToDelete) return;
 
-    const updatedUsers = users.map(user => {
-      if (user.type === 'professor' && user.classIds?.includes(classId)) {
-        return {
-          ...user,
-          classIds: user.classIds.filter(id => id !== classId)
-        };
-      }
-      return user;
-    });
+    try {
+      // Update all professors that were assigned to this class
+      const professorsToUpdate = users.filter(user => 
+        user.type === 'professor' && user.classIds?.includes(classId)
+      );
 
-    setUsers(updatedUsers);
-    updatedUsers.forEach(saveUser);
-    
-    setClasses(classes.filter(c => c.id !== classId));
-    
-    toast({
-      title: "Classe removida",
-      description: `A classe ${classToDelete.name} foi removida do sistema.`
-    });
+      for (const professor of professorsToUpdate) {
+        const updatedProfessor = {
+          ...professor,
+          classIds: professor.classIds?.filter(id => id !== classId) || []
+        };
+        await saveUser(updatedProfessor);
+      }
+
+      // Delete the class (this will cascade delete related data due to foreign keys)
+      await deleteClass(classId);
+      
+      // Refresh data
+      await refetchClasses();
+      await refetchUsers();
+      
+      toast({
+        title: "Classe removida",
+        description: `A classe ${classToDelete.name} foi removida do sistema.`
+      });
+    } catch (error) {
+      console.error('Erro ao deletar classe:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover classe.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getCurrentQuarter = () => {
@@ -241,26 +306,35 @@ export const Settings = () => {
     }
   };
 
-  const exportData = () => {
-    const data = {
-      users: getUsers(),
-      classes: getClasses(),
-      churchName: getChurchName(),
-      exportDate: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ebd-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Backup criado",
-      description: "Os dados foram exportados com sucesso."
-    });
+  const exportData = async () => {
+    try {
+      const data = {
+        users: await getUsers(),
+        classes: await getClasses(),
+        churchName: await getChurchName(),
+        exportDate: new Date().toISOString()
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ebd-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Backup criado",
+        description: "Os dados foram exportados com sucesso."
+      });
+    } catch (error) {
+      console.error('Erro ao exportar dados:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar backup.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (user?.type !== 'secretario') {
@@ -274,11 +348,29 @@ export const Settings = () => {
   }
 
   const professors = users.filter(u => u.type === 'professor');
+  const isLoading = usersLoading || classesLoading || settingsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando configurações...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Configurações</h1>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">Configurações</h1>
+          <div className="flex items-center gap-1 text-green-600">
+            <Wifi className="w-4 h-4" />
+            <span className="text-xs">Tempo Real</span>
+          </div>
+        </div>
         <p className="text-gray-600">Gerencie todas as configurações do sistema EBD Digital</p>
       </div>
 
