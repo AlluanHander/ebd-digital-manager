@@ -538,7 +538,7 @@ export const Users = () => {
                     <div className="space-y-1">
                       <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate flex items-center gap-2">
                         {user.name}
-                        <Wifi className="w-3 h-3 text-green-500" title="Sincronizado em tempo real" />
+                        <Wifi className="w-3 h-3 text-green-500" />
                       </h3>
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Senha: {user.password}</p>
@@ -566,7 +566,6 @@ export const Users = () => {
                         }
                       }}
                       className="h-8 w-8"
-                      title="Alterar senha"
                     >
                       <Key className="w-3 h-3 sm:w-4 sm:h-4" />
                     </Button>
