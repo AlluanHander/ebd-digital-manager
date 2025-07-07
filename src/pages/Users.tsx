@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings, Wifi } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeUsers, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
@@ -15,7 +15,7 @@ export const Users = () => {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
   
-  // Use realtime hooks para dados sincronizados
+  // Use realtime hooks para dados sincronizados automaticamente
   const { users, loading: usersLoading } = useRealtimeUsers();
   const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
   
@@ -50,13 +50,18 @@ export const Users = () => {
   useEffect(() => {
     if (secretaryCredentials) {
       setLocalSecretaryCredentials(secretaryCredentials);
+      console.log('🔄 Credenciais do secretário sincronizadas:', secretaryCredentials);
     }
   }, [secretaryCredentials]);
+
+  useEffect(() => {
+    console.log('🔄 Lista de usuários atualizada em tempo real:', users);
+  }, [users]);
 
   const saveSecretaryCredentials = async () => {
     if (!localSecretaryCredentials.username.trim() || !localSecretaryCredentials.password.trim()) {
       toast({
-        title: "Erro",
+        title: "❌ Erro",
         description: "Usuário e senha são obrigatórios.",
         variant: "destructive"
       });
@@ -68,15 +73,15 @@ export const Users = () => {
       setIsEditingSecretary(false);
       
       toast({
-        title: "Credenciais atualizadas",
-        description: "As credenciais do secretário foram salvas e sincronizadas em tempo real."
+        title: "✅ Credenciais atualizadas",
+        description: "As credenciais do secretário foram salvas e sincronizadas em tempo real em todos os dispositivos!"
       });
       
-      console.log('Credenciais do secretário salvas e sincronizadas:', localSecretaryCredentials);
+      console.log('🔄 Credenciais do secretário salvas e sincronizadas:', localSecretaryCredentials);
     } catch (error) {
-      console.error('Erro ao salvar credenciais:', error);
+      console.error('❌ Erro ao salvar credenciais:', error);
       toast({
-        title: "Erro",
+        title: "❌ Erro",
         description: "Erro ao salvar credenciais do secretário.",
         variant: "destructive"
       });
@@ -125,7 +130,7 @@ export const Users = () => {
   const createUser = async () => {
     if (!newUser.name.trim() || !newUser.username.trim() || !newUser.password.trim() || !newUser.phone.trim()) {
       toast({
-        title: "Erro no cadastro",
+        title: "❌ Erro no cadastro",
         description: "Preencha todos os campos obrigatórios (Nome, Usuário, Senha e Telefone).",
         variant: "destructive"
       });
@@ -134,7 +139,7 @@ export const Users = () => {
 
     if (users.some(u => u.username === newUser.username)) {
       toast({
-        title: "Erro no cadastro",
+        title: "❌ Erro no cadastro",
         description: "Este nome de usuário já está em uso.",
         variant: "destructive"
       });
@@ -160,15 +165,15 @@ export const Users = () => {
       setIsCreating(false);
       
       toast({
-        title: "Professor cadastrado",
-        description: `${user.name} foi cadastrado com sucesso! Usuário: ${user.username}, Senha: ${user.password}. Agora ele pode fazer login em qualquer dispositivo em tempo real!`
+        title: "✅ Professor cadastrado",
+        description: `${user.name} foi cadastrado com sucesso! Agora ele pode fazer login em qualquer dispositivo - dados sincronizados em tempo real!`
       });
       
-      console.log('Novo professor cadastrado e sincronizado no Supabase:', user);
+      console.log('🔄 Novo professor cadastrado e sincronizado no Supabase:', user);
     } catch (error) {
-      console.error('Erro ao cadastrar professor:', error);
+      console.error('❌ Erro ao cadastrar professor:', error);
       toast({
-        title: "Erro no cadastro",
+        title: "❌ Erro no cadastro",
         description: "Erro ao cadastrar professor no banco de dados.",
         variant: "destructive"
       });
@@ -281,7 +286,10 @@ export const Users = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dados em tempo real...</p>
+          <p className="text-gray-600 flex items-center gap-2">
+            <Wifi className="w-4 h-4" />
+            🔄 Carregando dados sincronizados em tempo real...
+          </p>
         </div>
       </div>
     );
@@ -290,8 +298,11 @@ export const Users = () => {
   return (
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       <div className="text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Gerenciamento do Sistema</h1>
-        <p className="text-sm sm:text-base text-gray-600">Gerencie credenciais e professores (sincronizado em tempo real entre dispositivos)</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+          <Wifi className="w-6 h-6 text-green-500" />
+          Gerenciamento do Sistema
+        </h1>
+        <p className="text-sm sm:text-base text-gray-600">🔄 Gerencie credenciais e professores - sincronizado em tempo real entre todos os dispositivos</p>
       </div>
 
       {/* Credenciais do Secretário */}
@@ -299,10 +310,11 @@ export const Users = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-700 text-base sm:text-lg">
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-            Credenciais do Secretário (Sincronização em Tempo Real)
+            <Wifi className="w-4 h-4 text-green-500" />
+            Credenciais do Secretário (Tempo Real)
           </CardTitle>
           <CardDescription className="text-purple-600">
-            Configure o usuário e senha para acesso do secretário - mudanças são aplicadas instantaneamente
+            🔄 Configure o usuário e senha para acesso do secretário - mudanças são aplicadas instantaneamente em todos os dispositivos
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -315,7 +327,10 @@ export const Users = () => {
                 <p className="text-sm text-gray-600">
                   <strong>Senha:</strong> {'*'.repeat(localSecretaryCredentials.password.length)}
                 </p>
-                <p className="text-xs text-green-600 font-medium">✅ Sincronizado em tempo real</p>
+                <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                  <Wifi className="w-3 h-3" />
+                  ✅ Sincronizado em tempo real entre dispositivos
+                </p>
               </div>
               <Button onClick={() => setIsEditingSecretary(true)} size="sm" variant="outline">
                 <Edit className="w-4 h-4 mr-2" />
@@ -371,7 +386,6 @@ export const Users = () => {
         </CardContent>
       </Card>
 
-      
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
         <Card className="bg-blue-50 border-blue-200">
@@ -507,8 +521,13 @@ export const Users = () => {
       {/* Lista de Professores */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Professores Cadastrados (Tempo Real)</CardTitle>
-          <CardDescription className="text-sm">Lista sincronizada em tempo real - professores podem fazer login em qualquer dispositivo instantaneamente</CardDescription>
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Wifi className="w-4 h-4 text-green-500" />
+            Professores Cadastrados (Tempo Real)
+          </CardTitle>
+          <CardDescription className="text-sm">
+            🔄 Lista sincronizada automaticamente - professores podem fazer login em qualquer dispositivo instantaneamente
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {professorUsers.length > 0 ? (
@@ -517,11 +536,17 @@ export const Users = () => {
                 <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border rounded-lg hover:bg-gray-50 gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="space-y-1">
-                      <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{user.name}</h3>
+                      <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate flex items-center gap-2">
+                        {user.name}
+                        <Wifi className="w-3 h-3 text-green-500" title="Sincronizado em tempo real" />
+                      </h3>
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Senha: {user.password}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Telefone: {user.phone}</p>
-                      <p className="text-xs sm:text-sm text-green-600 font-medium">✅ Pode fazer login em qualquer dispositivo (sincronização em tempo real)</p>
+                      <p className="text-xs sm:text-sm text-green-600 font-medium flex items-center gap-1">
+                        <Wifi className="w-3 h-3" />
+                        ✅ Pode fazer login em qualquer dispositivo (sincronização automática)
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -601,7 +626,10 @@ export const Users = () => {
             <div className="text-center py-6 sm:py-8">
               <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-sm sm:text-base text-gray-500">Nenhum professor cadastrado</p>
-              <p className="text-xs text-gray-400 mt-1">Cadastre professores para que possam fazer login em tempo real</p>
+              <p className="text-xs text-gray-400 mt-1 flex items-center justify-center gap-1">
+                <Wifi className="w-3 h-3" />
+                Cadastre professores para que possam fazer login em tempo real
+              </p>
             </div>
           )}
         </CardContent>

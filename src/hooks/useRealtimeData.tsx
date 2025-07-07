@@ -14,10 +14,10 @@ export const useRealtimeUsers = () => {
       try {
         const data = await getUsers();
         setUsers(data);
-        console.log('Dados iniciais de usuários carregados:', data);
+        console.log('✅ Dados iniciais de usuários carregados:', data);
         setLoading(false);
       } catch (error) {
-        console.error('Erro ao carregar dados iniciais:', error);
+        console.error('❌ Erro ao carregar dados iniciais:', error);
         setLoading(false);
       }
     };
@@ -26,9 +26,10 @@ export const useRealtimeUsers = () => {
 
     // Set up realtime subscription for users table
     const channel = supabase
-      .channel('public:users', {
+      .channel('realtime-users', {
         config: {
-          broadcast: { self: true }
+          broadcast: { self: false },
+          presence: { key: 'users' }
         }
       })
       .on(
@@ -39,23 +40,26 @@ export const useRealtimeUsers = () => {
           table: 'users'
         },
         async (payload) => {
-          console.log('Mudança na tabela users detectada:', payload);
+          console.log('🔄 Mudança detectada na tabela users:', payload);
           try {
             // Reload all users data when any change occurs
             const updatedData = await getUsers();
             setUsers(updatedData);
-            console.log('Dados de usuários atualizados:', updatedData);
+            console.log('✅ Dados de usuários sincronizados em tempo real:', updatedData);
           } catch (error) {
-            console.error('Erro ao recarregar dados de usuários:', error);
+            console.error('❌ Erro ao sincronizar dados de usuários:', error);
           }
         }
       )
       .subscribe((status) => {
-        console.log('Status da subscrição de usuários:', status);
+        console.log('📡 Status da conexão realtime de usuários:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conectado ao realtime de usuários!');
+        }
       });
 
     return () => {
-      console.log('Removendo canal de usuários');
+      console.log('🔌 Desconectando canal de usuários');
       supabase.removeChannel(channel);
     };
   }, []);
@@ -66,7 +70,7 @@ export const useRealtimeUsers = () => {
       setUsers(data);
       return data;
     } catch (error) {
-      console.error('Erro ao refetch usuários:', error);
+      console.error('❌ Erro ao refetch usuários:', error);
       return [];
     }
   };
@@ -84,10 +88,10 @@ export const useRealtimeClasses = () => {
       try {
         const data = await getClasses();
         setClasses(data);
-        console.log('Dados iniciais de classes carregados:', data);
+        console.log('✅ Dados iniciais de classes carregados:', data);
         setLoading(false);
       } catch (error) {
-        console.error('Erro ao carregar dados iniciais de classes:', error);
+        console.error('❌ Erro ao carregar dados iniciais de classes:', error);
         setLoading(false);
       }
     };
@@ -96,9 +100,10 @@ export const useRealtimeClasses = () => {
 
     // Set up realtime subscriptions for all class-related tables
     const classesChannel = supabase
-      .channel('public:classes-all', {
+      .channel('realtime-classes', {
         config: {
-          broadcast: { self: true }
+          broadcast: { self: false },
+          presence: { key: 'classes' }
         }
       })
       .on(
@@ -109,7 +114,7 @@ export const useRealtimeClasses = () => {
           table: 'classes'
         },
         async (payload) => {
-          console.log('Mudança na tabela classes:', payload);
+          console.log('🔄 Mudança na tabela classes:', payload);
           await reloadClassesData();
         }
       )
@@ -121,7 +126,7 @@ export const useRealtimeClasses = () => {
           table: 'students'
         },
         async (payload) => {
-          console.log('Mudança na tabela students:', payload);
+          console.log('🔄 Mudança na tabela students:', payload);
           await reloadClassesData();
         }
       )
@@ -133,7 +138,7 @@ export const useRealtimeClasses = () => {
           table: 'visitors'
         },
         async (payload) => {
-          console.log('Mudança na tabela visitors:', payload);
+          console.log('🔄 Mudança na tabela visitors:', payload);
           await reloadClassesData();
         }
       )
@@ -145,7 +150,7 @@ export const useRealtimeClasses = () => {
           table: 'announcements'
         },
         async (payload) => {
-          console.log('Mudança na tabela announcements:', payload);
+          console.log('🔄 Mudança na tabela announcements:', payload);
           await reloadClassesData();
         }
       )
@@ -157,7 +162,7 @@ export const useRealtimeClasses = () => {
           table: 'birthdays'
         },
         async (payload) => {
-          console.log('Mudança na tabela birthdays:', payload);
+          console.log('🔄 Mudança na tabela birthdays:', payload);
           await reloadClassesData();
         }
       )
@@ -169,26 +174,29 @@ export const useRealtimeClasses = () => {
           table: 'inventory'
         },
         async (payload) => {
-          console.log('Mudança na tabela inventory:', payload);
+          console.log('🔄 Mudança na tabela inventory:', payload);
           await reloadClassesData();
         }
       )
       .subscribe((status) => {
-        console.log('Status da subscrição de classes:', status);
+        console.log('📡 Status da conexão realtime de classes:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conectado ao realtime de classes!');
+        }
       });
 
     const reloadClassesData = async () => {
       try {
         const updatedData = await getClasses();
         setClasses(updatedData);
-        console.log('Dados de classes atualizados:', updatedData);
+        console.log('✅ Dados de classes sincronizados em tempo real:', updatedData);
       } catch (error) {
-        console.error('Erro ao recarregar dados de classes:', error);
+        console.error('❌ Erro ao sincronizar dados de classes:', error);
       }
     };
 
     return () => {
-      console.log('Removendo canal de classes');
+      console.log('🔌 Desconectando canal de classes');
       supabase.removeChannel(classesChannel);
     };
   }, []);
@@ -199,7 +207,7 @@ export const useRealtimeClasses = () => {
       setClasses(data);
       return data;
     } catch (error) {
-      console.error('Erro ao refetch classes:', error);
+      console.error('❌ Erro ao refetch classes:', error);
       return [];
     }
   };
@@ -227,11 +235,11 @@ export const useRealtimeSystemSettings = () => {
             username: data.secretary_username || 'admin',
             password: data.secretary_password || '1234'
           });
-          console.log('Configurações do sistema carregadas:', data);
+          console.log('✅ Configurações do sistema carregadas:', data);
         }
         setLoading(false);
       } catch (error) {
-        console.error('Erro ao carregar configurações:', error);
+        console.error('❌ Erro ao carregar configurações:', error);
         setLoading(false);
       }
     };
@@ -240,9 +248,10 @@ export const useRealtimeSystemSettings = () => {
 
     // Set up realtime subscription for system settings
     const channel = supabase
-      .channel('public:system_settings', {
+      .channel('realtime-settings', {
         config: {
-          broadcast: { self: true }
+          broadcast: { self: false },
+          presence: { key: 'settings' }
         }
       })
       .on(
@@ -253,7 +262,7 @@ export const useRealtimeSystemSettings = () => {
           table: 'system_settings'
         },
         async (payload) => {
-          console.log('Configurações do sistema mudaram:', payload);
+          console.log('🔄 Configurações do sistema mudaram:', payload);
           if (payload.new) {
             const newData = payload.new as any;
             setChurchName(newData.church_name || '');
@@ -261,16 +270,19 @@ export const useRealtimeSystemSettings = () => {
               username: newData.secretary_username || 'admin',
               password: newData.secretary_password || '1234'
             });
-            console.log('Configurações atualizadas em tempo real:', newData);
+            console.log('✅ Configurações sincronizadas em tempo real:', newData);
           }
         }
       )
       .subscribe((status) => {
-        console.log('Status da subscrição de configurações:', status);
+        console.log('📡 Status da conexão realtime de configurações:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conectado ao realtime de configurações!');
+        }
       });
 
     return () => {
-      console.log('Removendo canal de configurações');
+      console.log('🔌 Desconectando canal de configurações');
       supabase.removeChannel(channel);
     };
   }, []);

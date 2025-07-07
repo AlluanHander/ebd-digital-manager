@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { findProfessorByCredentials, setLoggedProfessor, getSecretaryCredentials } from '@/lib/supabase-storage';
+import { findProfessorByCredentials, setLoggedProfessor } from '@/lib/supabase-storage';
 import { useToast } from '@/hooks/use-toast';
 import { Church, User, Lock, UserCheck, GraduationCap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
@@ -22,8 +22,12 @@ export const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Use realtime system settings
+  // Use realtime system settings para credenciais sempre atualizadas
   const { secretaryCredentials, loading: settingsLoading } = useRealtimeSystemSettings();
+
+  useEffect(() => {
+    console.log('🔄 Credenciais do secretário atualizadas em tempo real:', secretaryCredentials);
+  }, [secretaryCredentials]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,8 +35,8 @@ export const Login = () => {
 
     try {
       if (userType === 'secretario') {
-        console.log('Tentativa de login do secretário:', { username, password });
-        console.log('Credenciais corretas do secretário:', secretaryCredentials);
+        console.log('🔐 Tentativa de login do secretário:', { username, password });
+        console.log('✅ Credenciais corretas (sincronizadas):', secretaryCredentials);
         
         if (username === secretaryCredentials.username && password === secretaryCredentials.password) {
           const secretaryUser = {
@@ -51,50 +55,50 @@ export const Login = () => {
           login(secretaryUser);
           
           toast({
-            title: "Login realizado com sucesso!",
-            description: `Bem-vindo(a), ${secretaryUser.name}!`,
+            title: "✅ Login realizado com sucesso!",
+            description: `Bem-vindo(a), ${secretaryUser.name}! Sistema sincronizado em tempo real.`,
           });
 
           navigate('/dashboard');
         } else {
           toast({
-            title: "Erro no login",
+            title: "❌ Erro no login",
             description: `Credenciais inválidas. Use: ${secretaryCredentials.username} / ${secretaryCredentials.password}`,
             variant: "destructive",
           });
         }
       } else {
-        console.log('Tentando login do professor com:', { username, password });
+        console.log('🔐 Tentando login do professor com:', { username, password });
         
-        // Buscar professor diretamente do Supabase
+        // Buscar professor diretamente do Supabase (dados sincronizados em tempo real)
         const professor = await findProfessorByCredentials(username, password);
 
         if (!professor) {
           toast({
-            title: "Erro no login",
+            title: "❌ Erro no login",
             description: "Usuário ou senha incorretos. Verifique se o professor foi cadastrado pelo secretário.",
             variant: "destructive",
           });
           return;
         }
 
-        console.log('Login do professor bem-sucedido:', professor);
+        console.log('✅ Login do professor bem-sucedido (dados sincronizados):', professor);
 
         // Salvar professor logado no localStorage para sessão local
         setLoggedProfessor(professor);
         login(professor);
         
         toast({
-          title: "Login realizado com sucesso!",
-          description: `Bem-vindo(a), ${professor.name}! Dados sincronizados em tempo real.`,
+          title: "✅ Login realizado com sucesso!",
+          description: `Bem-vindo(a), ${professor.name}! Dados sincronizados em tempo real entre dispositivos.`,
         });
 
         navigate('/professor-panel');
       }
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('❌ Erro no login:', error);
       toast({
-        title: "Erro no login",
+        title: "❌ Erro no login",
         description: "Ocorreu um erro ao fazer login. Tente novamente.",
         variant: "destructive",
       });
@@ -116,7 +120,7 @@ export const Login = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando configurações em tempo real...</p>
+          <p className="text-gray-600">🔄 Carregando configurações sincronizadas...</p>
         </div>
       </div>
     );
@@ -136,16 +140,16 @@ export const Login = () => {
             </Button>
             
             <div className="w-16 h-16 mx-auto rounded-full bg-ebd-gradient flex items-center justify-center shadow-lg">
-              {getIcon()}
+              {userType === 'secretario' ? <UserCheck className="w-8 h-8 text-white" /> : <GraduationCap className="w-8 h-8 text-white" />}
             </div>
             <div>
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {getTitle()}
+                {userType === 'secretario' ? 'Login do Secretário' : 'Login do Professor'}
               </CardTitle>
               <CardDescription className="text-gray-600 mt-2">
                 {userType === 'secretario' 
-                  ? 'Acesse o painel administrativo' 
-                  : 'Acesse seu painel de professor (sincronizado em tempo real)'
+                  ? '🔄 Acesse o painel administrativo (sincronizado em tempo real)' 
+                  : '🔄 Acesse seu painel de professor (sincronizado entre dispositivos)'
                 }
               </CardDescription>
             </div>
@@ -219,19 +223,19 @@ export const Login = () => {
 
             {userType === 'secretario' && (
               <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium mb-1">💡 Credenciais atuais do secretário:</p>
+                <p className="font-medium mb-1">🔄 Credenciais atuais (sincronizadas):</p>
                 <p>• Usuário: {secretaryCredentials.username}</p>
                 <p>• Senha: {secretaryCredentials.password}</p>
-                <p className="text-xs text-gray-400 mt-1">Configuráveis no painel administrativo</p>
+                <p className="text-xs text-green-600 font-medium mt-1">✅ Atualizadas em tempo real entre dispositivos</p>
               </div>
             )}
 
             {userType === 'professor' && (
               <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <p className="font-medium mb-1">📝 Para professores:</p>
+                <p className="font-medium mb-1">👨‍🏫 Para professores:</p>
                 <p>• Use o usuário e senha criados pelo secretário</p>
                 <p>• Se não conseguir entrar, peça ao secretário para verificar seus dados</p>
-                <p className="text-xs text-green-600 font-medium mt-2">✅ Os dados são sincronizados em tempo real entre dispositivos</p>
+                <p className="text-xs text-green-600 font-medium mt-2">🔄 Os dados são sincronizados em tempo real entre todos os dispositivos</p>
               </div>
             )}
           </CardContent>
