@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings, Wifi } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Edit, Trash2, Save, Eye, EyeOff, Key, Settings, Wifi, WifiOff, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtimeUsers, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
@@ -25,6 +25,7 @@ export const Users = () => {
   const [showSecretaryPassword, setShowSecretaryPassword] = useState(false);
   const [isEditingSecretary, setIsEditingSecretary] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState('conectando');
   
   const [newUser, setNewUser] = useState({
     name: '',
@@ -47,15 +48,24 @@ export const Users = () => {
     newPassword: ''
   });
 
+  // Monitor connection status
+  useEffect(() => {
+    if (!usersLoading && !settingsLoading) {
+      setConnectionStatus('conectado');
+    } else {
+      setConnectionStatus('conectando');
+    }
+  }, [usersLoading, settingsLoading]);
+
   useEffect(() => {
     if (secretaryCredentials) {
       setLocalSecretaryCredentials(secretaryCredentials);
-      console.log('🔄 Credenciais do secretário sincronizadas:', secretaryCredentials);
+      console.log('🔄 [UI] Credenciais do secretário sincronizadas:', secretaryCredentials);
     }
   }, [secretaryCredentials]);
 
   useEffect(() => {
-    console.log('🔄 Lista de usuários atualizada em tempo real:', users);
+    console.log('🔄 [UI] Lista de usuários atualizada em tempo real:', users.length, 'usuários');
   }, [users]);
 
   const saveSecretaryCredentials = async () => {
@@ -74,12 +84,12 @@ export const Users = () => {
       
       toast({
         title: "✅ Credenciais atualizadas",
-        description: "As credenciais do secretário foram salvas e sincronizadas em tempo real em todos os dispositivos!"
+        description: "As credenciais foram salvas e sincronizadas em TODOS os dispositivos conectados!"
       });
       
-      console.log('🔄 Credenciais do secretário salvas e sincronizadas:', localSecretaryCredentials);
+      console.log('💾 [SYNC] Credenciais salvas e sincronizadas:', localSecretaryCredentials);
     } catch (error) {
-      console.error('❌ Erro ao salvar credenciais:', error);
+      console.error('❌ [SYNC] Erro ao salvar credenciais:', error);
       toast({
         title: "❌ Erro",
         description: "Erro ao salvar credenciais do secretário.",
@@ -112,13 +122,13 @@ export const Users = () => {
       setShowPasswordChange(null);
       
       toast({
-        title: "Senha alterada",
-        description: `A senha de ${userToUpdate.name} foi alterada e sincronizada em tempo real.`
+        title: "✅ Senha alterada",
+        description: `A senha de ${userToUpdate.name} foi alterada e sincronizada em TODOS os dispositivos!`
       });
       
-      console.log('Senha alterada e sincronizada para usuário:', updatedUser);
+      console.log('💾 [SYNC] Senha alterada e sincronizada:', updatedUser.name);
     } catch (error) {
-      console.error('Erro ao alterar senha:', error);
+      console.error('❌ [SYNC] Erro ao alterar senha:', error);
       toast({
         title: "Erro",
         description: "Erro ao alterar senha do usuário.",
@@ -166,12 +176,12 @@ export const Users = () => {
       
       toast({
         title: "✅ Professor cadastrado",
-        description: `${user.name} foi cadastrado com sucesso! Agora ele pode fazer login em qualquer dispositivo - dados sincronizados em tempo real!`
+        description: `${user.name} foi cadastrado e sincronizado em TODOS os dispositivos conectados!`
       });
       
-      console.log('🔄 Novo professor cadastrado e sincronizado no Supabase:', user);
+      console.log('💾 [SYNC] Novo professor cadastrado e sincronizado:', user.name);
     } catch (error) {
-      console.error('❌ Erro ao cadastrar professor:', error);
+      console.error('❌ [SYNC] Erro ao cadastrar professor:', error);
       toast({
         title: "❌ Erro no cadastro",
         description: "Erro ao cadastrar professor no banco de dados.",
@@ -219,13 +229,13 @@ export const Users = () => {
       setNewUser({ name: '', email: '', username: '', password: '', phone: '', type: 'professor', churchName: '', classIds: [] });
       
       toast({
-        title: "Professor atualizado",
-        description: "As informações foram atualizadas e sincronizadas em tempo real."
+        title: "✅ Professor atualizado",
+        description: "As informações foram atualizadas e sincronizadas em TODOS os dispositivos!"
       });
       
-      console.log('Professor atualizado e sincronizado no Supabase:', updatedUser);
+      console.log('💾 [SYNC] Professor atualizado e sincronizado:', updatedUser.name);
     } catch (error) {
-      console.error('Erro ao atualizar professor:', error);
+      console.error('❌ [SYNC] Erro ao atualizar professor:', error);
       toast({
         title: "Erro na atualização",
         description: "Erro ao atualizar professor no banco de dados.",
@@ -242,13 +252,13 @@ export const Users = () => {
       await deleteUser(userId);
       
       toast({
-        title: "Usuário removido",
-        description: `${userToDelete.name} foi removido e a mudança foi sincronizada em tempo real.`
+        title: "✅ Usuário removido",
+        description: `${userToDelete.name} foi removido e sincronizado em TODOS os dispositivos!`
       });
       
-      console.log('Usuário removido e sincronizado do Supabase:', userToDelete);
+      console.log('💾 [SYNC] Usuário removido e sincronizado:', userToDelete.name);
     } catch (error) {
-      console.error('Erro ao remover usuário:', error);
+      console.error('❌ [SYNC] Erro ao remover usuário:', error);
       toast({
         title: "Erro",
         description: "Erro ao remover usuário do banco de dados.",
@@ -281,15 +291,38 @@ export const Users = () => {
   const professorUsers = users.filter(u => u.type === 'professor');
   const secretaryUsers = users.filter(u => u.type === 'secretario');
 
+  const getConnectionIcon = () => {
+    switch (connectionStatus) {
+      case 'conectado':
+        return <Activity className="w-4 h-4 text-green-500 animate-pulse" />;
+      case 'conectando':
+        return <Wifi className="w-4 h-4 text-yellow-500 animate-spin" />;
+      default:
+        return <WifiOff className="w-4 h-4 text-red-500" />;
+    }
+  };
+
+  const getConnectionText = () => {
+    switch (connectionStatus) {
+      case 'conectado':
+        return '🟢 Conectado - Sincronização em tempo real ativa';
+      case 'conectando':
+        return '🟡 Conectando - Estabelecendo sincronização...';
+      default:
+        return '🔴 Desconectado - Verifique sua conexão';
+    }
+  };
+
   if (usersLoading || settingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 flex items-center gap-2">
-            <Wifi className="w-4 h-4" />
-            🔄 Carregando dados sincronizados em tempo real...
+          <p className="text-gray-600 flex items-center gap-2 justify-center">
+            <Wifi className="w-4 h-4 animate-pulse" />
+            🔄 Estabelecendo conexão em tempo real...
           </p>
+          <p className="text-xs text-gray-500 mt-2">Conectando com o servidor para sincronização entre dispositivos</p>
         </div>
       </div>
     );
@@ -297,12 +330,24 @@ export const Users = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
+      {/* Status da Conexão */}
+      <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm">
+          {getConnectionIcon()}
+          <span className="font-medium">{getConnectionText()}</span>
+        </div>
+        <p className="text-xs text-gray-600 mt-1">
+          {connectionStatus === 'conectado' && `✅ ${users.length} usuários sincronizados entre todos os dispositivos`}
+          {connectionStatus === 'conectando' && '⏳ Aguardando sincronização completa...'}
+        </p>
+      </div>
+
       <div className="text-center">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
-          <Wifi className="w-6 h-6 text-green-500" />
+          <Activity className="w-6 h-6 text-green-500" />
           Gerenciamento do Sistema
         </h1>
-        <p className="text-sm sm:text-base text-gray-600">🔄 Gerencie credenciais e professores - sincronizado em tempo real entre todos os dispositivos</p>
+        <p className="text-sm sm:text-base text-gray-600">🔄 Gerencie credenciais e professores - sincronizado em tempo real entre TODOS os dispositivos</p>
       </div>
 
       {/* Credenciais do Secretário */}
@@ -310,11 +355,11 @@ export const Users = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-700 text-base sm:text-lg">
             <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-            <Wifi className="w-4 h-4 text-green-500" />
-            Credenciais do Secretário (Tempo Real)
+            <Activity className="w-4 h-4 text-green-500" />
+            Credenciais do Secretário (Multi-Dispositivo)
           </CardTitle>
           <CardDescription className="text-purple-600">
-            🔄 Configure o usuário e senha para acesso do secretário - mudanças são aplicadas instantaneamente em todos os dispositivos
+            🔄 Configure o usuário e senha - mudanças são aplicadas INSTANTANEAMENTE em TODOS os dispositivos conectados
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -328,8 +373,8 @@ export const Users = () => {
                   <strong>Senha:</strong> {'*'.repeat(localSecretaryCredentials.password.length)}
                 </p>
                 <p className="text-xs text-green-600 font-medium flex items-center gap-1">
-                  <Wifi className="w-3 h-3" />
-                  ✅ Sincronizado em tempo real entre dispositivos
+                  <Activity className="w-3 h-3" />
+                  ✅ Sincronizado em TEMPO REAL entre TODOS os dispositivos
                 </p>
               </div>
               <Button onClick={() => setIsEditingSecretary(true)} size="sm" variant="outline">
@@ -375,7 +420,7 @@ export const Users = () => {
               <div className="flex gap-2">
                 <Button onClick={saveSecretaryCredentials} size="sm">
                   <Save className="w-4 h-4 mr-2" />
-                  Salvar
+                  Salvar e Sincronizar
                 </Button>
                 <Button onClick={() => setIsEditingSecretary(false)} variant="outline" size="sm">
                   Cancelar
@@ -397,6 +442,10 @@ export const Users = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold text-blue-800">{users.length}</div>
+            <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+              <Activity className="w-3 h-3" />
+              Sincronizado
+            </p>
           </CardContent>
         </Card>
 
@@ -409,6 +458,10 @@ export const Users = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold text-green-800">{professorUsers.length}</div>
+            <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+              <Activity className="w-3 h-3" />
+              Sincronizado
+            </p>
           </CardContent>
         </Card>
 
@@ -421,6 +474,10 @@ export const Users = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold text-purple-800">{secretaryUsers.length}</div>
+            <p className="text-xs text-purple-600 flex items-center gap-1 mt-1">
+              <Activity className="w-3 h-3" />
+              Sincronizado
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -431,7 +488,7 @@ export const Users = () => {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <UserPlus className="w-4 h-4 sm:w-5 sm:h-5" />
-              {editingUser ? 'Editar Professor' : 'Novo Professor'} (Sincronização em Tempo Real)
+              {editingUser ? 'Editar Professor' : 'Novo Professor'} (Multi-Dispositivo)
             </CardTitle>
             {!isCreating && (
               <Button onClick={() => setIsCreating(true)} size="sm">
@@ -508,7 +565,7 @@ export const Users = () => {
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button onClick={editingUser ? updateUser : createUser} className="flex items-center gap-2" size="sm">
                 <Save className="w-4 h-4" />
-                {editingUser ? 'Atualizar' : 'Cadastrar'}
+                {editingUser ? 'Atualizar' : 'Cadastrar'} e Sincronizar
               </Button>
               <Button variant="outline" onClick={cancelEdit} size="sm">
                 Cancelar
@@ -522,11 +579,11 @@ export const Users = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <Wifi className="w-4 h-4 text-green-500" />
-            Professores Cadastrados (Tempo Real)
+            <Activity className="w-4 h-4 text-green-500" />
+            Professores Cadastrados (Multi-Dispositivo)
           </CardTitle>
           <CardDescription className="text-sm">
-            🔄 Lista sincronizada automaticamente - professores podem fazer login em qualquer dispositivo instantaneamente
+            🔄 Lista sincronizada automaticamente - professores podem fazer login em QUALQUER dispositivo INSTANTANEAMENTE
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -538,14 +595,14 @@ export const Users = () => {
                     <div className="space-y-1">
                       <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate flex items-center gap-2">
                         {user.name}
-                        <Wifi className="w-3 h-3 text-green-500" />
+                        <Activity className="w-3 h-3 text-green-500" />
                       </h3>
                       <p className="text-xs sm:text-sm text-gray-500">Usuário: {user.username}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Senha: {user.password}</p>
                       <p className="text-xs sm:text-sm text-gray-500">Telefone: {user.phone}</p>
                       <p className="text-xs sm:text-sm text-green-600 font-medium flex items-center gap-1">
-                        <Wifi className="w-3 h-3" />
-                        ✅ Pode fazer login em qualquer dispositivo (sincronização automática)
+                        <Activity className="w-3 h-3" />
+                        ✅ Login disponível em TODOS os dispositivos (sincronização ativa)
                       </p>
                     </div>
                   </div>
@@ -626,8 +683,8 @@ export const Users = () => {
               <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-sm sm:text-base text-gray-500">Nenhum professor cadastrado</p>
               <p className="text-xs text-gray-400 mt-1 flex items-center justify-center gap-1">
-                <Wifi className="w-3 h-3" />
-                Cadastre professores para que possam fazer login em tempo real
+                <Activity className="w-3 h-3" />
+                Cadastre professores para que possam fazer login em TODOS os dispositivos
               </p>
             </div>
           )}

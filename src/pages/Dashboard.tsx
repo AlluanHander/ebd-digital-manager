@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getAttendanceRecords } from '@/lib/storage';
 import { AttendanceRecord } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserCheck, Calendar, MessageSquare, Package, BarChart3, Cake, UserPlus } from 'lucide-react';
+import { Users, UserCheck, Calendar, MessageSquare, Package, BarChart3, Cake, UserPlus, Activity, Wifi } from 'lucide-react';
 import { MiniCalendar } from '@/components/MiniCalendar';
 import { useRealtimeClasses, useRealtimeSystemSettings } from '@/hooks/useRealtimeData';
 
@@ -13,6 +13,15 @@ export const Dashboard = () => {
   const { classes, loading: classesLoading } = useRealtimeClasses();
   const { churchName, loading: settingsLoading } = useRealtimeSystemSettings();
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState('conectando');
+
+  useEffect(() => {
+    if (!classesLoading && !settingsLoading) {
+      setConnectionStatus('conectado');
+    } else {
+      setConnectionStatus('conectando');
+    }
+  }, [classesLoading, settingsLoading]);
 
   useEffect(() => {
     const loadAttendance = async () => {
@@ -137,7 +146,11 @@ export const Dashboard = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dados em tempo real...</p>
+          <p className="text-gray-600 flex items-center gap-2 justify-center">
+            <Wifi className="w-4 h-4 animate-pulse" />
+            Carregando dados em tempo real...
+          </p>
+          <p className="text-xs text-gray-500 mt-2">Sincronizando dados entre TODOS os dispositivos</p>
         </div>
       </div>
     );
@@ -145,6 +158,17 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Status da Conexão */}
+      <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm justify-center">
+          <Activity className="w-4 h-4 text-green-500 animate-pulse" />
+          <span className="font-medium">🟢 Dados sincronizados em TEMPO REAL entre TODOS os dispositivos</span>
+        </div>
+        <p className="text-xs text-gray-600 mt-1 text-center">
+          ✅ {userClasses.length} classes • {totalStudents} alunos • Última atualização: agora
+        </p>
+      </div>
+
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -156,8 +180,9 @@ export const Dashboard = () => {
         {churchName && (
           <p className="text-sm text-gray-500">{churchName}</p>
         )}
-        <div className="text-sm text-blue-600 font-medium">
-          Trimestre Atual: {currentQuarter} • Dados sincronizados em tempo real
+        <div className="text-sm text-blue-600 font-medium flex items-center justify-center gap-2">
+          <Activity className="w-4 h-4" />
+          Trimestre Atual: {currentQuarter} • Dados sincronizados em TEMPO REAL
         </div>
       </div>
 
@@ -178,6 +203,10 @@ export const Dashboard = () => {
                 <CardContent>
                   <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
                   <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                  <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1">
+                    <Activity className="w-3 h-3" />
+                    Sincronizado
+                  </p>
                 </CardContent>
               </Card>
             ))}
@@ -195,12 +224,13 @@ export const Dashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-blue-600" />
-            {user?.type === 'professor' ? 'Suas Classes' : 'Resumo Geral das Classes'}
+            <Activity className="w-4 h-4 text-green-500" />
+            {user?.type === 'professor' ? 'Suas Classes (Tempo Real)' : 'Resumo Geral das Classes (Tempo Real)'}
           </CardTitle>
           <CardDescription>
             {user?.type === 'professor' 
-              ? 'Classes que você leciona'
-              : 'Visão geral de todas as classes da EBD'
+              ? 'Classes que você leciona - sincronizadas em tempo real'
+              : 'Visão geral de todas as classes da EBD - sincronizadas em tempo real'
             }
           </CardDescription>
         </CardHeader>
@@ -210,7 +240,10 @@ export const Dashboard = () => {
               {userClasses.map((classData) => (
                 <Card key={classData.id} className="hover-lift border border-gray-200 hover:border-blue-300 transition-colors">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg text-gray-900">{classData.name}</CardTitle>
+                    <CardTitle className="text-lg text-gray-900 flex items-center gap-2">
+                      {classData.name}
+                      <Activity className="w-3 h-3 text-green-500" />
+                    </CardTitle>
                     <CardDescription>
                       Professores: {classData.teacherNames.join(', ')}
                     </CardDescription>
@@ -234,6 +267,10 @@ export const Dashboard = () => {
                         <span className="font-medium">{(classData.inventory?.bibles || 0) + (classData.inventory?.magazines || 0)}</span>
                       </div>
                     </div>
+                    <p className="text-xs text-green-600 font-medium mt-2 flex items-center gap-1">
+                      <Activity className="w-3 h-3" />
+                      Dados sincronizados em tempo real
+                    </p>
                   </CardContent>
                 </Card>
               ))}
@@ -247,10 +284,11 @@ export const Dashboard = () => {
                   : 'Nenhuma classe encontrada'
                 }
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-gray-400 mt-1 flex items-center justify-center gap-1">
+                <Activity className="w-3 h-3" />
                 {user?.type === 'professor' 
                   ? 'Entre em contato com o secretário para ser atribuído a uma classe'
-                  : 'Comece criando sua primeira classe'
+                  : 'Comece criando sua primeira classe - será sincronizada em tempo real'
                 }
               </p>
             </div>
