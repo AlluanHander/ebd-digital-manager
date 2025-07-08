@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getClasses, saveClass, getCurrentQuarter, generateId } from '@/lib/supabase-storage';
+import { saveInventory, getCurrentQuarter, generateId } from '@/lib/supabase-storage';
 import { Class, Inventory as InventoryType } from '@/types';
+import { useRealtimeClasses } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ interface InventoryItem {
 export const Inventory = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { classes: allClasses, loading: classesLoading, refetch: refetchClasses } = useRealtimeClasses();
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [inventoryData, setInventoryData] = useState({
@@ -48,9 +50,8 @@ export const Inventory = () => {
   const [isAddingItem, setIsAddingItem] = useState(false);
 
   useEffect(() => {
-    const loadClasses = async () => {
-      const allClasses = await getClasses();
-      if (user?.type === 'professor') {
+    if (user && allClasses.length > 0) {
+      if (user.type === 'professor') {
         const userClasses = allClasses.filter(c => 
           c.teacherIds.includes(user.id) || user.classIds?.includes(c.id)
         );
@@ -60,13 +61,12 @@ export const Inventory = () => {
         }
       } else {
         setClasses(allClasses);
+        if (allClasses.length > 0 && !selectedClass) {
+          setSelectedClass(allClasses[0]);
+        }
       }
-    };
-    
-    if (user) {
-      loadClasses();
     }
-  }, [user]);
+  }, [user, allClasses]);
 
   useEffect(() => {
     if (selectedClass && selectedClass.inventory) {
@@ -86,12 +86,12 @@ export const Inventory = () => {
     }));
   };
 
-  const saveInventory = () => {
+  const saveInventoryData = async () => {
     if (!selectedClass) return;
 
     const currentQuarter = getCurrentQuarter();
     const inventory: InventoryType = {
-      id: selectedClass.inventory?.id || Date.now().toString(),
+      id: selectedClass.inventory?.id || generateId(),
       classId: selectedClass.id,
       bibles: inventoryData.bibles,
       magazines: inventoryData.magazines,
@@ -100,19 +100,22 @@ export const Inventory = () => {
       quarter: currentQuarter
     };
 
-    const updatedClass = {
-      ...selectedClass,
-      inventory
-    };
-
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    
-    toast({
-      title: "Inventário salvo",
-      description: "Os dados do inventário foram atualizados com sucesso."
-    });
+    try {
+      await saveInventory(inventory);
+      await refetchClasses(); // Refresh real-time data
+      
+      toast({
+        title: "Inventário salvo",
+        description: "Os dados do inventário foram atualizados com sucesso."
+      });
+    } catch (error) {
+      console.error('Error saving inventory:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar o inventário. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const getTotalItems = () => {
@@ -189,9 +192,7 @@ export const Inventory = () => {
       inventory
     };
 
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+    // This will be handled by real-time synchronization
     
     setNewItem({ type: 'bible', description: '', quantity: 1, value: 0 });
     setIsAddingItem(false);
@@ -226,6 +227,17 @@ export const Inventory = () => {
       description: "Item foi removido do inventário."
     });
   };
+
+  if (classesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando dados em tempo real...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (user?.type === 'secretario') {
     const totalInventory = getTotalInventory();
@@ -596,7 +608,7 @@ export const Inventory = () => {
                   </div>
                 </div>
 
-                <Button onClick={saveInventory} className="w-full">
+                <Button onClick={saveInventoryData} className="w-full">
                   <Save className="w-4 h-4 mr-2" />
                   Salvar Inventário
                 </Button>

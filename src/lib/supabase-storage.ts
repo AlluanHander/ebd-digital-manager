@@ -441,6 +441,77 @@ export const deleteClass = async (classId: string): Promise<void> => {
   }
 };
 
+// Students management
+export const saveStudent = async (student: Student): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('students')
+      .upsert({
+        id: student.id,
+        name: student.name,
+        class_id: student.classId,
+        birthday: student.birthday,
+        created_at: student.createdAt
+      }, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error saving student:', error);
+      throw error;
+    } else {
+      console.log('Aluno salvo com sucesso no Supabase:', student);
+    }
+  } catch (error) {
+    console.error('Error saving student:', error);
+    throw error;
+  }
+};
+
+export const deleteStudent = async (studentId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', studentId);
+    
+    if (error) {
+      console.error('Error deleting student:', error);
+      throw error;
+    } else {
+      console.log('Aluno deletado com sucesso do Supabase:', studentId);
+    }
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    throw error;
+  }
+};
+
+// Inventory management
+export const saveInventory = async (inventory: Inventory): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('inventory')
+      .upsert({
+        id: inventory.id,
+        class_id: inventory.classId,
+        bibles: inventory.bibles,
+        magazines: inventory.magazines,
+        offerings: inventory.offerings,
+        quarter: inventory.quarter,
+        last_updated: inventory.lastUpdated
+      }, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error saving inventory:', error);
+      throw error;
+    } else {
+      console.log('Inventário salvo com sucesso no Supabase:', inventory);
+    }
+  } catch (error) {
+    console.error('Error saving inventory:', error);
+    throw error;
+  }
+};
+
 // Attendance management
 export const saveAttendance = async (attendance: AttendanceRecord): Promise<void> => {
   try {

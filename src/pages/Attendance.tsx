@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getClasses, saveClass, getAttendanceRecords, saveAttendance, generateId, getCurrentQuarter, getCurrentWeek } from '@/lib/supabase-storage';
+import { saveStudent, deleteStudent, getAttendanceRecords, saveAttendance, generateId, getCurrentQuarter, getCurrentWeek } from '@/lib/supabase-storage';
 import { Class, Student, AttendanceRecord } from '@/types';
+import { useRealtimeClasses } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ import {
 export const Attendance = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { classes: allClasses, loading: classesLoading, refetch: refetchClasses } = useRealtimeClasses();
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [newStudentName, setNewStudentName] = useState('');
@@ -32,9 +34,8 @@ export const Attendance = () => {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   useEffect(() => {
-    const loadClasses = async () => {
-      const allClasses = await getClasses();
-      if (user?.type === 'professor') {
+    if (user && allClasses.length > 0) {
+      if (user.type === 'professor') {
         const userClasses = allClasses.filter(c => 
           c.teacherIds.includes(user.id) || user.classIds?.includes(c.id)
         );
@@ -44,13 +45,12 @@ export const Attendance = () => {
         }
       } else {
         setClasses(allClasses);
+        if (allClasses.length > 0 && !selectedClass) {
+          setSelectedClass(allClasses[0]);
+        }
       }
-    };
-    
-    if (user) {
-      loadClasses();
     }
-  }, [user]);
+  }, [user, allClasses]);
 
   useEffect(() => {
     const loadAttendanceRecords = async () => {
@@ -72,7 +72,7 @@ export const Attendance = () => {
     loadAttendanceRecords();
   }, [selectedClass]);
 
-  const addStudent = () => {
+  const addStudent = async () => {
     if (!newStudentName.trim() || !selectedClass) return;
 
     const newStudent: Student = {
@@ -83,62 +83,71 @@ export const Attendance = () => {
       createdAt: new Date().toISOString()
     };
 
-    const updatedClass = {
-      ...selectedClass,
-      students: [...selectedClass.students, newStudent]
-    };
-
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    setNewStudentName('');
-    setIsAddingStudent(false);
-    
-    toast({
-      title: "Aluno adicionado",
-      description: `${newStudent.name} foi adicionado à classe.`
-    });
+    try {
+      await saveStudent(newStudent);
+      await refetchClasses(); // Refresh real-time data
+      setNewStudentName('');
+      setIsAddingStudent(false);
+      
+      toast({
+        title: "Aluno adicionado",
+        description: `${newStudent.name} foi adicionado à classe.`
+      });
+    } catch (error) {
+      console.error('Error adding student:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar o aluno. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const editStudent = (student: Student) => {
     setEditingStudent(student);
   };
 
-  const saveEditStudent = () => {
+  const saveEditStudent = async () => {
     if (!editingStudent || !selectedClass) return;
 
-    const updatedClass = {
-      ...selectedClass,
-      students: selectedClass.students.map(s => s.id === editingStudent.id ? editingStudent : s)
-    };
-
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    setEditingStudent(null);
-    
-    toast({
-      title: "Aluno atualizado",
-      description: "Dados do aluno foram atualizados com sucesso."
-    });
+    try {
+      await saveStudent(editingStudent);
+      await refetchClasses(); // Refresh real-time data
+      setEditingStudent(null);
+      
+      toast({
+        title: "Aluno atualizado",
+        description: "Dados do aluno foram atualizados com sucesso."
+      });
+    } catch (error) {
+      console.error('Error editing student:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o aluno. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const removeStudent = (studentId: string) => {
+  const removeStudent = async (studentId: string) => {
     if (!selectedClass) return;
 
-    const updatedClass = {
-      ...selectedClass,
-      students: selectedClass.students.filter(s => s.id !== studentId)
-    };
-
-    saveClass(updatedClass);
-    setSelectedClass(updatedClass);
-    setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
-    
-    toast({
-      title: "Aluno removido",
-      description: "Aluno foi removido da classe."
-    });
+    try {
+      await deleteStudent(studentId);
+      await refetchClasses(); // Refresh real-time data
+      
+      toast({
+        title: "Aluno removido",
+        description: "Aluno foi removido da classe."
+      });
+    } catch (error) {
+      console.error('Error removing student:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o aluno. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const toggleAttendance = (studentId: string) => {
@@ -181,6 +190,17 @@ export const Attendance = () => {
   const getTotalStudents = () => {
     return selectedClass?.students.length || 0;
   };
+
+  if (classesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Carregando dados em tempo real...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (user?.type === 'secretario') {
     return (
