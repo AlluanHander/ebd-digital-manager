@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getClasses, saveClass, getCurrentQuarter, generateId } from '@/lib/storage';
+import { getClasses, saveClass, getCurrentQuarter, generateId } from '@/lib/supabase-storage';
 import { Class, Inventory as InventoryType } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,17 +48,23 @@ export const Inventory = () => {
   const [isAddingItem, setIsAddingItem] = useState(false);
 
   useEffect(() => {
-    const allClasses = getClasses();
-    if (user?.type === 'professor') {
-      const userClasses = allClasses.filter(c => 
-        c.teacherIds.includes(user.id) || user.classIds?.includes(c.id)
-      );
-      setClasses(userClasses);
-      if (userClasses.length > 0 && !selectedClass) {
-        setSelectedClass(userClasses[0]);
+    const loadClasses = async () => {
+      const allClasses = await getClasses();
+      if (user?.type === 'professor') {
+        const userClasses = allClasses.filter(c => 
+          c.teacherIds.includes(user.id) || user.classIds?.includes(c.id)
+        );
+        setClasses(userClasses);
+        if (userClasses.length > 0 && !selectedClass) {
+          setSelectedClass(userClasses[0]);
+        }
+      } else {
+        setClasses(allClasses);
       }
-    } else {
-      setClasses(allClasses);
+    };
+    
+    if (user) {
+      loadClasses();
     }
   }, [user]);
 
