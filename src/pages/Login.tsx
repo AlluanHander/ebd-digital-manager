@@ -49,7 +49,7 @@ export const Login = () => {
         
         if (username === secretaryCredentials.username && password === secretaryCredentials.password) {
           const secretaryUser = {
-            id: 'secretary-1',
+            id: crypto.randomUUID(),
             name: 'Administrador',
             email: 'admin@ebd.local',
             username: secretaryCredentials.username,

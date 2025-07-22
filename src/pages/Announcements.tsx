@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getClasses, saveAnnouncement, deleteAnnouncement as deleteAnnouncementFromDb, generateId } from '@/lib/supabase-storage';
+import { supabase } from '@/integrations/supabase/client';
 import { Class, Announcement } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,28 @@ export const Announcements = () => {
     };
 
     loadClasses();
+
+    // Set up real-time subscription for announcements
+    const channel = supabase
+      .channel('announcements-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'announcements'
+        },
+        (payload) => {
+          console.log('Real-time announcement update:', payload);
+          // Reload classes when announcements change
+          loadClasses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const createAnnouncement = async () => {
@@ -257,13 +280,13 @@ export const Announcements = () => {
                   <span className="text-xs sm:text-sm">
                     De: {selectedAnnouncement.authorName} ({selectedAnnouncement.authorType === 'secretario' ? 'Secretário' : 'Professor'})
                   </span>
-                  <Badge variant="outline" className="w-fit text-xs">
-                    {getClassName(selectedAnnouncement.classId)}
-                  </Badge>
                   <span className="text-xs text-gray-500">
                     {new Date(selectedAnnouncement.createdAt).toLocaleString('pt-BR')}
                   </span>
                 </CardDescription>
+                <Badge variant="outline" className="w-fit text-xs mt-2">
+                  {getClassName(selectedAnnouncement.classId)}
+                </Badge>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {(selectedAnnouncement.createdBy === user?.id || user?.type === 'secretario') && (
