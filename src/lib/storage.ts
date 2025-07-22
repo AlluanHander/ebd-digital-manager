@@ -16,7 +16,7 @@ const STORAGE_KEYS = {
 };
 
 // Utility functions
-export const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
+export const generateId = () => crypto.randomUUID();
 
 export const getCurrentQuarter = () => {
   const now = new Date();

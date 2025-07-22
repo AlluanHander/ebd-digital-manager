@@ -18,7 +18,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const currentUser = getCurrentUser();
     if (currentUser) {
-      setUser(currentUser);
+      // Migração automática: converter ID antigo do secretário para UUID válido
+      if (currentUser.id === 'secretary-1' && currentUser.type === 'secretario') {
+        const updatedUser = {
+          ...currentUser,
+          id: crypto.randomUUID()
+        };
+        setCurrentUser(updatedUser);
+        setUser(updatedUser);
+        console.log('🔄 Migração automática: ID do secretário atualizado para UUID válido');
+      } else {
+        setUser(currentUser);
+      }
     }
   }, []);
 

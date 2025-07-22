@@ -104,12 +104,24 @@ export const Announcements = () => {
         title: newAnnouncement.title.trim(),
         content: newAnnouncement.content.trim(),
         classId: newAnnouncement.classId,
-        createdBy: user.id,
+        createdBy: user.id, // Garantir que seja um UUID válido
         createdAt: new Date().toISOString(),
         authorName: user.name,
         authorType: user.type,
         replies: []
       };
+
+      // Validar se o ID do usuário é um UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(user.id)) {
+        console.error('❌ ID do usuário não é um UUID válido:', user.id);
+        toast({
+          title: "Erro de autenticação",
+          description: "Faça logout e login novamente para corrigir o problema.",
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (user.type === 'secretario') {
         if (newAnnouncement.classId === 'all') {
