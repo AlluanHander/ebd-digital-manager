@@ -623,6 +623,52 @@ export const logoutProfessor = (): void => {
   }
 };
 
+// Announcements management
+export const saveAnnouncement = async (announcement: Announcement): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('announcements')
+      .upsert({
+        id: announcement.id,
+        title: announcement.title,
+        content: announcement.content,
+        class_id: announcement.classId,
+        created_by: announcement.createdBy,
+        author_name: announcement.authorName,
+        author_type: announcement.authorType
+      }, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error saving announcement:', error);
+      throw error;
+    } else {
+      console.log('Anúncio salvo com sucesso no Supabase:', announcement);
+    }
+  } catch (error) {
+    console.error('Error saving announcement:', error);
+    throw error;
+  }
+};
+
+export const deleteAnnouncement = async (announcementId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('announcements')
+      .delete()
+      .eq('id', announcementId);
+    
+    if (error) {
+      console.error('Error deleting announcement:', error);
+      throw error;
+    } else {
+      console.log('Anúncio deletado com sucesso do Supabase:', announcementId);
+    }
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    throw error;
+  }
+};
+
 // Placeholder functions for deprecated localStorage functions
 export const getSavedCredentials = () => null;
 export const setSavedCredentials = () => {};

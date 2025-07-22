@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getClasses, saveClass, generateId } from '@/lib/storage';
+import { getClasses, saveAnnouncement, deleteAnnouncement as deleteAnnouncementFromDb, generateId } from '@/lib/supabase-storage';
 import { Class, Announcement } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,89 +44,101 @@ export const Announcements = () => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   useEffect(() => {
-    const allClasses = getClasses();
-    setClasses(allClasses);
-    
-    // Filtrar classes baseado no tipo de usuário
-    let filteredClasses = allClasses;
-    if (user?.type === 'professor' && user.classIds) {
-      filteredClasses = allClasses.filter(classData => user.classIds?.includes(classData.id));
-    }
-    
-    // Compilar todos os avisos das classes filtradas
-    const allAnnouncements: Announcement[] = [];
-    filteredClasses.forEach(classData => {
-      allAnnouncements.push(...classData.announcements);
-    });
-    
-    // Ordenar por data (mais recente primeiro)
-    allAnnouncements.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setAnnouncements(allAnnouncements);
-  }, [user]);
-
-  const createAnnouncement = () => {
-    if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim() || !user) return;
-
-    const announcement: Announcement = {
-      id: generateId(),
-      title: newAnnouncement.title.trim(),
-      content: newAnnouncement.content.trim(),
-      classId: newAnnouncement.classId,
-      createdBy: user.id,
-      createdAt: new Date().toISOString(),
-      authorName: user.name,
-      authorType: user.type,
-      replies: []
+    const loadClasses = async () => {
+      try {
+        const allClasses = await getClasses();
+        setClasses(allClasses);
+        
+        // Filtrar classes baseado no tipo de usuário
+        let filteredClasses = allClasses;
+        if (user?.type === 'professor' && user.classIds) {
+          filteredClasses = allClasses.filter(classData => user.classIds?.includes(classData.id));
+        }
+        
+        // Compilar todos os avisos das classes filtradas
+        const allAnnouncements: Announcement[] = [];
+        filteredClasses.forEach(classData => {
+          allAnnouncements.push(...classData.announcements);
+        });
+        
+        // Ordenar por data (mais recente primeiro)
+        allAnnouncements.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAnnouncements(allAnnouncements);
+      } catch (error) {
+        console.error('Error loading classes:', error);
+      }
     };
 
-    if (user.type === 'secretario') {
-      if (newAnnouncement.classId === 'all') {
-        // Secretário enviando para todas as classes
-        const updatedClasses = classes.map(classData => ({
-          ...classData,
-          announcements: [...classData.announcements, announcement]
-        }));
-        
-        updatedClasses.forEach(saveClass);
-        setClasses(updatedClasses);
+    loadClasses();
+  }, [user]);
+
+  const createAnnouncement = async () => {
+    if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim() || !user) return;
+
+    try {
+      const announcement: Announcement = {
+        id: generateId(),
+        title: newAnnouncement.title.trim(),
+        content: newAnnouncement.content.trim(),
+        classId: newAnnouncement.classId,
+        createdBy: user.id,
+        createdAt: new Date().toISOString(),
+        authorName: user.name,
+        authorType: user.type,
+        replies: []
+      };
+
+      if (user.type === 'secretario') {
+        if (newAnnouncement.classId === 'all') {
+          // Secretário enviando para todas as classes
+          for (const classData of classes) {
+            const classAnnouncement = { ...announcement, classId: classData.id };
+            await saveAnnouncement(classAnnouncement);
+          }
+        } else {
+          // Secretário enviando para uma classe específica
+          await saveAnnouncement(announcement);
+        }
       } else {
-        // Secretário enviando para uma classe específica
-        const targetClass = classes.find(c => c.id === newAnnouncement.classId);
-        if (targetClass) {
-          const updatedClass = {
-            ...targetClass,
-            announcements: [...targetClass.announcements, announcement]
-          };
-          
-          saveClass(updatedClass);
-          setClasses(classes.map(c => c.id === updatedClass.id ? updatedClass : c));
+        // Professor enviando para suas classes
+        const userClasses = classes.filter(c => user.classIds?.includes(c.id));
+        for (const classData of userClasses) {
+          const classAnnouncement = { ...announcement, classId: classData.id };
+          await saveAnnouncement(classAnnouncement);
         }
       }
-    } else {
-      // Professor enviando para suas classes
-      const userClasses = classes.filter(c => user.classIds?.includes(c.id));
-      userClasses.forEach(classData => {
-        const updatedClass = {
-          ...classData,
-          announcements: [...classData.announcements, { ...announcement, classId: classData.id }]
-        };
-        saveClass(updatedClass);
-      });
-      
-      setClasses(classes.map(c => {
-        const updatedClass = userClasses.find(uc => uc.id === c.id);
-        return updatedClass || c;
-      }));
-    }
 
-    setAnnouncements(prev => [announcement, ...prev]);
-    setNewAnnouncement({ title: '', content: '', classId: 'all' });
-    setIsCreating(false);
-    
-    toast({
-      title: "Aviso enviado",
-      description: "O aviso foi enviado com sucesso."
-    });
+      // Recarregar os dados após salvar
+      const updatedClasses = await getClasses();
+      setClasses(updatedClasses);
+      
+      // Atualizar lista de anúncios
+      const filteredClasses = user?.type === 'professor' && user.classIds
+        ? updatedClasses.filter(classData => user.classIds?.includes(classData.id))
+        : updatedClasses;
+      
+      const allAnnouncements: Announcement[] = [];
+      filteredClasses.forEach(classData => {
+        allAnnouncements.push(...classData.announcements);
+      });
+      allAnnouncements.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setAnnouncements(allAnnouncements);
+
+      setNewAnnouncement({ title: '', content: '', classId: 'all' });
+      setIsCreating(false);
+      
+      toast({
+        title: "Aviso enviado",
+        description: "O aviso foi enviado com sucesso."
+      });
+    } catch (error) {
+      console.error('Error creating announcement:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar o aviso. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
   const replyToAnnouncement = (announcementId: string) => {
@@ -140,22 +152,9 @@ export const Announcements = () => {
       createdAt: new Date().toISOString()
     };
 
-    // Encontrar e atualizar o aviso nas classes
-    const updatedClasses = classes.map(classData => ({
-      ...classData,
-      announcements: classData.announcements.map(announcement => {
-        if (announcement.id === announcementId) {
-          return {
-            ...announcement,
-            replies: [...(announcement.replies || []), reply]
-          };
-        }
-        return announcement;
-      })
-    }));
-
-    updatedClasses.forEach(saveClass);
-    setClasses(updatedClasses);
+    // Note: As replies não estão sendo salvas no banco ainda
+    // Para funcionalidade completa, seria necessário criar uma tabela de replies
+    console.log('Reply functionality would need a replies table in database');
     
     // Atualizar estado local
     setAnnouncements(prev => prev.map(announcement => {
@@ -185,24 +184,31 @@ export const Announcements = () => {
     });
   };
 
-  const deleteAnnouncement = (announcementId: string) => {
-    const updatedClasses = classes.map(classData => ({
-      ...classData,
-      announcements: classData.announcements.filter(a => a.id !== announcementId)
-    }));
-    
-    updatedClasses.forEach(saveClass);
-    setClasses(updatedClasses);
-    setAnnouncements(prev => prev.filter(a => a.id !== announcementId));
-    
-    if (selectedAnnouncement && selectedAnnouncement.id === announcementId) {
-      setSelectedAnnouncement(null);
+  const deleteAnnouncement = async (announcementId: string) => {
+    try {
+      await deleteAnnouncementFromDb(announcementId);
+      
+      // Recarregar os dados após deletar
+      const updatedClasses = await getClasses();
+      setClasses(updatedClasses);
+      setAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+      
+      if (selectedAnnouncement && selectedAnnouncement.id === announcementId) {
+        setSelectedAnnouncement(null);
+      }
+      
+      toast({
+        title: "Aviso removido",
+        description: "O aviso foi removido com sucesso."
+      });
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o aviso. Tente novamente.",
+        variant: "destructive"
+      });
     }
-    
-    toast({
-      title: "Aviso removido",
-      description: "O aviso foi removido com sucesso."
-    });
   };
 
   const getClassName = (classId: string) => {
