@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { saveStudent, deleteStudent, getAttendanceRecords, saveAttendance, generateId, getCurrentQuarter, getCurrentWeek } from '@/lib/supabase-storage';
-import { Class, Student, AttendanceRecord } from '@/types';
+import { saveStudent, deleteStudent, getAttendanceRecords, saveAttendance, generateId, getCurrentQuarter, getCurrentWeek, saveBirthday } from '@/lib/supabase-storage';
+import { Class, Student, AttendanceRecord, Birthday } from '@/types';
 import { useRealtimeClasses } from '@/hooks/useRealtimeData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ export const Attendance = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentBirthday, setNewStudentBirthday] = useState('');
   const [attendanceData, setAttendanceData] = useState<{[key: string]: boolean}>({});
   const [todayDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -80,13 +81,32 @@ export const Attendance = () => {
       name: newStudentName.trim(),
       classId: selectedClass.id,
       attendance: [],
+      birthday: newStudentBirthday || undefined,
       createdAt: new Date().toISOString()
     };
 
     try {
       await saveStudent(newStudent);
+      
+      // Se tem aniversário, cadastrar na tabela de aniversários também
+      if (newStudentBirthday) {
+        const birthdayDate = new Date(newStudentBirthday);
+        const birthday: Birthday = {
+          id: generateId(),
+          studentId: newStudent.id,
+          studentName: newStudent.name,
+          classId: selectedClass.id,
+          date: newStudentBirthday,
+          month: birthdayDate.getMonth() + 1,
+          day: birthdayDate.getDate(),
+          createdAt: new Date().toISOString()
+        };
+        await saveBirthday(birthday);
+      }
+      
       await refetchClasses(); // Refresh real-time data
       setNewStudentName('');
+      setNewStudentBirthday('');
       setIsAddingStudent(false);
       
       toast({
@@ -294,6 +314,16 @@ export const Attendance = () => {
                           onKeyPress={(e) => e.key === 'Enter' && addStudent()}
                         />
                       </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="student-birthday">Data de Aniversário (opcional)</Label>
+                        <Input
+                          id="student-birthday"
+                          type="date"
+                          value={newStudentBirthday}
+                          onChange={(e) => setNewStudentBirthday(e.target.value)}
+                        />
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsAddingStudent(false)}>
@@ -337,7 +367,7 @@ export const Attendance = () => {
                   <Label htmlFor="new-student" className="text-sm font-medium">
                     Adicionar Novo Aluno
                   </Label>
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
                     <Input
                       id="new-student"
                       placeholder="Nome do aluno"
@@ -345,8 +375,15 @@ export const Attendance = () => {
                       onChange={(e) => setNewStudentName(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addStudent()}
                     />
-                    <Button onClick={addStudent} size="icon">
-                      <UserPlus className="w-4 h-4" />
+                    <Input
+                      type="date"
+                      placeholder="Aniversário (opcional)"
+                      value={newStudentBirthday}
+                      onChange={(e) => setNewStudentBirthday(e.target.value)}
+                    />
+                    <Button onClick={addStudent} className="w-full">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Adicionar Aluno
                     </Button>
                   </div>
                 </div>

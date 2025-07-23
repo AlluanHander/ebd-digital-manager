@@ -201,27 +201,38 @@ export const Birthdays = () => {
 
         {/* Lista Geral de Aniversários */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {getAllBirthdays().map((birthday) => (
-            <Card key={birthday.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Cake className="w-5 h-5 text-pink-500" />
-                  {birthday.studentName}
-                </CardTitle>
-                <CardDescription>
-                  Classe: {getClassName(birthday.classId)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">
-                    {formatDate(birthday.date)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {getAllBirthdays().map((birthday) => {
+            const today = new Date();
+            const isToday = birthday.month === today.getMonth() + 1 && birthday.day === today.getDate();
+            
+            return (
+              <Card 
+                key={birthday.id} 
+                className={`hover:shadow-md transition-shadow ${
+                  isToday ? 'ring-2 ring-pink-500 bg-pink-50 shadow-lg' : ''
+                }`}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Cake className={`w-5 h-5 ${isToday ? 'text-pink-600' : 'text-pink-500'}`} />
+                    {birthday.studentName}
+                    {isToday && <Badge className="bg-pink-600 text-white">🎉 Hoje!</Badge>}
+                  </CardTitle>
+                  <CardDescription>
+                    Classe: {getClassName(birthday.classId)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <span className={`text-sm ${isToday ? 'text-pink-700 font-medium' : 'text-gray-600'}`}>
+                      {formatDate(birthday.date)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {getAllBirthdays().length === 0 && (
@@ -333,42 +344,57 @@ export const Birthdays = () => {
                       if (a.month !== b.month) return a.month - b.month;
                       return a.day - b.day;
                     })
-                    .map((birthday) => (
-                    <div key={birthday.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
-                          <Cake className="w-5 h-5 text-pink-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{birthday.studentName}</p>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(birthday.date)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {getMonthName(birthday.month)}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => editBirthday(birthday)}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                     .map((birthday) => {
+                      const today = new Date();
+                      const isToday = birthday.month === today.getMonth() + 1 && birthday.day === today.getDate();
+                      
+                      return (
+                        <div 
+                          key={birthday.id} 
+                          className={`flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 ${
+                            isToday ? 'bg-pink-50 border-pink-200 shadow-md' : ''
+                          }`}
                         >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeBirthday(birthday.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              isToday ? 'bg-pink-200' : 'bg-pink-100'
+                            }`}>
+                              <Cake className={`w-5 h-5 ${isToday ? 'text-pink-700' : 'text-pink-600'}`} />
+                            </div>
+                            <div>
+                              <p className={`font-medium ${isToday ? 'text-pink-800' : ''}`}>
+                                {birthday.studentName}
+                                {isToday && ' 🎉'}
+                              </p>
+                              <p className={`text-sm ${isToday ? 'text-pink-600' : 'text-gray-500'}`}>
+                                {formatDate(birthday.date)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={isToday ? "default" : "outline"} className={isToday ? "bg-pink-600" : ""}>
+                              {getMonthName(birthday.month)}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => editBirthday(birthday)}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeBirthday(birthday.id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                         </div>
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="text-center py-8">

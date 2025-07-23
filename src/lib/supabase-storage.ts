@@ -669,6 +669,34 @@ export const deleteAnnouncement = async (announcementId: string): Promise<void> 
   }
 };
 
+// Birthday management
+export const saveBirthday = async (birthday: Birthday): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('birthdays')
+      .upsert({
+        id: birthday.id,
+        student_id: birthday.studentId,
+        student_name: birthday.studentName,
+        class_id: birthday.classId,
+        date: birthday.date,
+        month: birthday.month,
+        day: birthday.day,
+        created_at: birthday.createdAt
+      }, { onConflict: 'id' });
+    
+    if (error) {
+      console.error('Error saving birthday:', error);
+      throw error;
+    } else {
+      console.log('Aniversário salvo com sucesso no Supabase:', birthday);
+    }
+  } catch (error) {
+    console.error('Error saving birthday:', error);
+    throw error;
+  }
+};
+
 // Placeholder functions for deprecated localStorage functions
 export const getSavedCredentials = () => null;
 export const setSavedCredentials = () => {};
