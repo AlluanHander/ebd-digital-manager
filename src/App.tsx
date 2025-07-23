@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/Layout";
+import { ChatButton } from "@/components/ChatButton";
 
 // Pages
 import { Home } from "@/pages/Home";
@@ -157,6 +158,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
+          <ChatButton />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
