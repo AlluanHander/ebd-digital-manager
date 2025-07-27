@@ -36,12 +36,10 @@ export const Birthdays = () => {
   useEffect(() => {
     const allClasses = getClasses();
     if (user?.type === 'professor') {
-      const userClasses = allClasses.filter(c => 
-        c.teacherIds.includes(user.id) || user.classIds?.includes(c.id)
-      );
-      setClasses(userClasses);
-      if (userClasses.length > 0 && !selectedClass) {
-        setSelectedClass(userClasses[0]);
+      // Professor pode ver todas as classes para cadastrar aniversários
+      setClasses(allClasses);
+      if (allClasses.length > 0 && !selectedClass) {
+        setSelectedClass(allClasses[0]);
       }
     } else {
       setClasses(allClasses);
