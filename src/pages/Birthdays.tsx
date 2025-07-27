@@ -263,6 +263,29 @@ export const Birthdays = () => {
         </Alert>
       )}
 
+      {/* Seletor de Classe para Professor */}
+      {user?.type === 'professor' && classes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Selecionar Classe</CardTitle>
+            <CardDescription>Escolha uma classe para gerenciar os aniversários</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2 flex-wrap">
+              {classes.map((classData) => (
+                <Button
+                  key={classData.id}
+                  variant={selectedClass?.id === classData.id ? "default" : "outline"}
+                  onClick={() => setSelectedClass(classData)}
+                >
+                  {classData.name}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {selectedClass ? (
         <div className="space-y-6">
           {/* Add Birthday Button */}
@@ -271,7 +294,7 @@ export const Birthdays = () => {
               <div className="flex justify-between items-center">
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
-                  Gerenciar Aniversários
+                  Gerenciar Aniversários - {selectedClass.name}
                 </CardTitle>
                 <Dialog open={isAddingBirthday} onOpenChange={setIsAddingBirthday}>
                   <DialogTrigger asChild>
